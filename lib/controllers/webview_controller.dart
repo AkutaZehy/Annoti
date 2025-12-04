@@ -41,8 +41,9 @@ class AnnotiWebViewController {
     await _webViewController!.loadStringContent(htmlContent);
   }
 
-  /// Inject JavaScript to highlight an annotation using overlay system
-  /// Creates CSS overlays instead of modifying DOM - works with all text types
+  /// Inject JavaScript to highlight an annotation
+  /// Text mode: DOM manipulation with mark tags (works with formatted text)
+  /// Box mode: CSS overlays (works on any position)
   Future<void> highlightAnnotation(Annotation annotation) async {
     if (_webViewController == null) return;
 
@@ -54,107 +55,173 @@ class AnnotiWebViewController {
         const text = ${_escapeJsString(annotation.selectedText)};
         const mode = window.annotationHighlightMode || 'box';
         
-        // Create overlay highlight using bounding rectangles
-        createOverlayHighlight(anchorId, annotationId, text, mode);
+        if (mode === 'text') {
+          // Text mode: traverse DOM and wrap text nodes with <mark> tags
+          highlightTextInDOM(anchorId, annotationId, text);
+        } else {
+          // Box mode: create CSS overlay
+          highlightWithOverlay(anchorId, annotationId, text);
+        }
       } catch (e) {
         console.error('Error highlighting annotation:', e);
       }
     })();
     
-    function createOverlayHighlight(anchorId, annotationId, text, mode) {
-      // Find the text in document
+    // Text mode: Traverse DOM and wrap text nodes
+    function highlightTextInDOM(anchorId, annotationId, text) {
       const body = document.querySelector('.markdown-body');
       if (!body) return;
       
-      // Try to find text using anchor path first
+      // Find the range
       let range = findTextByAnchor(anchorId, body);
-      
-      // Fallback to text search if anchor fails
       if (!range) {
         range = findTextInElement(body, text);
       }
-      
       if (!range) {
         console.error('Could not find text to highlight');
         return;
       }
       
-      // Get bounding rectangles for the range
-      const rects = range.getClientRects();
-      if (rects.length === 0) return;
+      // Remove existing highlights for this annotation
+      const existing = body.querySelectorAll('mark[data-annotation-id="' + annotationId + '"]');
+      existing.forEach(mark => {
+        const parent = mark.parentNode;
+        while (mark.firstChild) {
+          parent.insertBefore(mark.firstChild, mark);
+        }
+        parent.removeChild(mark);
+        parent.normalize(); // Merge adjacent text nodes
+      });
       
-      // Create overlay container if it doesn't exist
+      // Extract contents and wrap each text node
+      try {
+        // Clone the range to preserve it
+        const workRange = range.cloneRange();
+        
+        // Get all text nodes in the range
+        const textNodes = [];
+        const walker = document.createTreeWalker(
+          range.commonAncestorContainer,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode: function(node) {
+              if (workRange.intersectsNode(node)) {
+                return NodeFilter.FILTER_ACCEPT;
+              }
+              return NodeFilter.FILTER_REJECT;
+            }
+          },
+          false
+        );
+        
+        let node;
+        while (node = walker.nextNode()) {
+          textNodes.push(node);
+        }
+        
+        // Process each text node
+        for (let i = 0; i < textNodes.length; i++) {
+          const textNode = textNodes[i];
+          const nodeRange = document.createRange();
+          
+          // Determine start and end offsets for this node
+          let startOffset = 0;
+          let endOffset = textNode.length;
+          
+          if (i === 0 && range.startContainer === textNode) {
+            startOffset = range.startOffset;
+          }
+          if (i === textNodes.length - 1 && range.endContainer === textNode) {
+            endOffset = range.endOffset;
+          }
+          
+          // Skip if no content to wrap
+          if (startOffset >= endOffset) continue;
+          
+          // Create range for this portion
+          nodeRange.setStart(textNode, startOffset);
+          nodeRange.setEnd(textNode, endOffset);
+          
+          // Create mark element
+          const mark = document.createElement('mark');
+          mark.setAttribute('data-annotation-id', annotationId);
+          mark.style.cssText = 'background-color: #fff3cd; border-bottom: 2px solid #ffc107; cursor: pointer;';
+          mark.addEventListener('click', function() {
+            notifyAnnotationClick(annotationId);
+          });
+          
+          // Wrap the content
+          try {
+            nodeRange.surroundContents(mark);
+          } catch (e) {
+            // If surroundContents fails (e.g., range crosses element boundaries),
+            // use extractContents + appendChild approach
+            const fragment = nodeRange.extractContents();
+            mark.appendChild(fragment);
+            nodeRange.insertNode(mark);
+          }
+        }
+      } catch (e) {
+        console.error('Error wrapping text nodes:', e);
+      }
+    }
+    
+    // Box mode: Create CSS overlay (position-based)
+    function highlightWithOverlay(anchorId, annotationId, text) {
+      const body = document.querySelector('.markdown-body');
+      if (!body) return;
+      
+      // Find the range
+      let range = findTextByAnchor(anchorId, body);
+      if (!range) {
+        range = findTextInElement(body, text);
+      }
+      if (!range) {
+        console.error('Could not find text to highlight');
+        return;
+      }
+      
+      // Create overlay container if needed
       let overlayContainer = document.getElementById('annotation-overlay-container');
       if (!overlayContainer) {
         overlayContainer = document.createElement('div');
         overlayContainer.id = 'annotation-overlay-container';
-        overlayContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;';
+        overlayContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;';
         document.body.appendChild(overlayContainer);
       }
       
-      // Remove existing overlays for this annotation
-      const existing = overlayContainer.querySelectorAll(`[data-annotation-id="${annotationId}"]`);
+      // Remove existing overlays
+      const existing = overlayContainer.querySelectorAll('[data-annotation-id="' + annotationId + '"]');
       existing.forEach(el => el.remove());
       
-      // Create highlights based on mode
+      // Create box overlay
+      const boundingRect = range.getBoundingClientRect();
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
       const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
       
-      if (mode === 'box') {
-        // Box mode: create a single box around the entire selection
-        const boundingRect = range.getBoundingClientRect();
-        
-        const overlay = document.createElement('div');
-        overlay.className = 'annotation-overlay annotation-overlay-box';
-        overlay.setAttribute('data-annotation-id', annotationId);
-        overlay.style.cssText = 
-          'position: absolute;' +
-          'left: ' + (boundingRect.left + scrollLeft) + 'px;' +
-          'top: ' + (boundingRect.top + scrollTop) + 'px;' +
-          'width: ' + boundingRect.width + 'px;' +
-          'height: ' + boundingRect.height + 'px;' +
-          'background-color: rgba(255, 243, 205, 0.5);' +
-          'border: 2px solid #ffc107;' +
-          'pointer-events: auto;' +
-          'cursor: pointer;';
-        
-        overlay.addEventListener('click', function() {
-          notifyAnnotationClick(annotationId);
-        });
-        
-        overlayContainer.appendChild(overlay);
-      } else {
-        // Text mode: create precise line-by-line overlays that only cover selected text
-        // Each rect represents exactly the selected text on that line
-        for (let i = 0; i < rects.length; i++) {
-          const rect = rects[i];
-          // Skip empty rects (can happen with line breaks)
-          if (rect.width === 0 || rect.height === 0) continue;
-          
-          const overlay = document.createElement('div');
-          overlay.className = 'annotation-overlay annotation-overlay-text';
-          overlay.setAttribute('data-annotation-id', annotationId);
-          // Store rect info for scrolling to center calculation
-          overlay.setAttribute('data-rect-index', i);
-          overlay.setAttribute('data-rect-count', rects.length);
-          overlay.style.cssText = 
-            'position: absolute;' +
-            'left: ' + (rect.left + scrollLeft) + 'px;' +
-            'top: ' + (rect.top + scrollTop) + 'px;' +
-            'width: ' + rect.width + 'px;' +
-            'height: ' + rect.height + 'px;' +
-            'background-color: rgba(255, 243, 205, 0.6);' +
-            'border-bottom: 2px solid #ffc107;' +
-            'pointer-events: auto;' +
-            'cursor: pointer;';
-          
-          overlay.addEventListener('click', function() {
-            notifyAnnotationClick(annotationId);
-          });
-          
-          overlayContainer.appendChild(overlay);
-        }
-      }
+      const overlay = document.createElement('div');
+      overlay.className = 'annotation-overlay annotation-overlay-box';
+      overlay.setAttribute('data-annotation-id', annotationId);
+      overlay.style.cssText = 
+        'position: absolute;' +
+        'left: ' + (boundingRect.left + scrollLeft) + 'px;' +
+        'top: ' + (boundingRect.top + scrollTop) + 'px;' +
+        'width: ' + boundingRect.width + 'px;' +
+        'height: ' + boundingRect.height + 'px;' +
+        'background-color: rgba(255, 243, 205, 1);' +
+        'border: 2px solid #ffc107;' +
+        'pointer-events: auto;' +
+        'cursor: pointer;';
+      
+      overlay.addEventListener('click', function() {
+        notifyAnnotationClick(annotationId);
+      });
+      
+      // Listen for window resize to recalculate position
+      overlay.setAttribute('data-range-text', text);
+      overlay.setAttribute('data-anchor-id', anchorId);
+      
+      overlayContainer.appendChild(overlay);
     }
     
     function findTextByAnchor(anchorId, body) {
@@ -255,15 +322,30 @@ class AnnotiWebViewController {
     }
   }
 
-  /// Remove highlight for an annotation
+  /// Remove highlight for an annotation - handles both text and box modes
   Future<void> removeHighlight(String annotationId) async {
     if (_webViewController == null) return;
 
     final script = '''
     (function() {
+      // Remove text mode highlights (mark tags)
+      const body = document.querySelector('.markdown-body');
+      if (body) {
+        const marks = body.querySelectorAll('mark[data-annotation-id="' + annotationId + '"]');
+        marks.forEach(mark => {
+          const parent = mark.parentNode;
+          while (mark.firstChild) {
+            parent.insertBefore(mark.firstChild, mark);
+          }
+          parent.removeChild(mark);
+          parent.normalize();
+        });
+      }
+      
+      // Remove box mode highlights (overlays)
       const overlayContainer = document.getElementById('annotation-overlay-container');
       if (overlayContainer) {
-        const overlays = overlayContainer.querySelectorAll('[data-annotation-id="${annotationId}"]');
+        const overlays = overlayContainer.querySelectorAll('[data-annotation-id="' + annotationId + '"]');
         overlays.forEach(overlay => overlay.remove());
       }
     })();
@@ -272,12 +354,27 @@ class AnnotiWebViewController {
     await _webViewController!.executeScript(script);
   }
 
-  /// Clear all highlights
+  /// Clear all highlights - both text and box modes
   Future<void> clearAllHighlights() async {
     if (_webViewController == null) return;
 
     final script = '''
     (function() {
+      // Clear text mode highlights (mark tags)
+      const body = document.querySelector('.markdown-body');
+      if (body) {
+        const marks = body.querySelectorAll('mark[data-annotation-id]');
+        marks.forEach(mark => {
+          const parent = mark.parentNode;
+          while (mark.firstChild) {
+            parent.insertBefore(mark.firstChild, mark);
+          }
+          parent.removeChild(mark);
+          parent.normalize();
+        });
+      }
+      
+      // Clear box mode highlights (overlays)
       const overlayContainer = document.getElementById('annotation-overlay-container');
       if (overlayContainer) {
         overlayContainer.remove();
@@ -288,49 +385,54 @@ class AnnotiWebViewController {
     await _webViewController!.executeScript(script);
   }
 
-  /// Scroll to annotation - centers the highlighted text in viewport
+  /// Scroll to annotation - handles both text mode (mark tags) and box mode (overlays)
   Future<void> scrollToAnnotation(String annotationId) async {
     if (_webViewController == null) return;
 
     final script = '''
     (function() {
+      // Try text mode first (mark tags)
+      const body = document.querySelector('.markdown-body');
+      if (body) {
+        const marks = body.querySelectorAll('mark[data-annotation-id="' + annotationId + '"]');
+        if (marks.length > 0) {
+          // Calculate center of all marks
+          let minTop = Infinity;
+          let maxBottom = -Infinity;
+          
+          marks.forEach(mark => {
+            const rect = mark.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const absoluteTop = rect.top + scrollTop;
+            const absoluteBottom = rect.bottom + scrollTop;
+            minTop = Math.min(minTop, absoluteTop);
+            maxBottom = Math.max(maxBottom, absoluteBottom);
+          });
+          
+          const centerY = (minTop + maxBottom) / 2;
+          window.scrollTo({
+            top: centerY - window.innerHeight / 2,
+            behavior: 'smooth'
+          });
+          return;
+        }
+      }
+      
+      // Fallback to box mode (overlays)
       const overlayContainer = document.getElementById('annotation-overlay-container');
       if (overlayContainer) {
-        const overlays = overlayContainer.querySelectorAll('[data-annotation-id="${annotationId}"]');
-        if (overlays.length === 0) return;
-        
-        // Calculate the center point of all overlays as a group
-        let minTop = Infinity;
-        let maxBottom = -Infinity;
-        let minLeft = Infinity;
-        let maxRight = -Infinity;
-        
-        overlays.forEach(overlay => {
+        const overlays = overlayContainer.querySelectorAll('[data-annotation-id="' + annotationId + '"]');
+        if (overlays.length > 0) {
+          const overlay = overlays[0];
           const rect = overlay.getBoundingClientRect();
           const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-          const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+          const centerY = rect.top + scrollTop + rect.height / 2;
           
-          const absoluteTop = rect.top + scrollTop;
-          const absoluteBottom = rect.bottom + scrollTop;
-          const absoluteLeft = rect.left + scrollLeft;
-          const absoluteRight = rect.right + scrollLeft;
-          
-          minTop = Math.min(minTop, absoluteTop);
-          maxBottom = Math.max(maxBottom, absoluteBottom);
-          minLeft = Math.min(minLeft, absoluteLeft);
-          maxRight = Math.max(maxRight, absoluteRight);
-        });
-        
-        // Calculate center of all highlighted lines
-        const centerY = (minTop + maxBottom) / 2;
-        const centerX = (minLeft + maxRight) / 2;
-        
-        // Scroll to center the highlighted text vertically in viewport
-        window.scrollTo({
-          top: centerY - window.innerHeight / 2,
-          left: centerX - window.innerWidth / 2,
-          behavior: 'smooth'
-        });
+          window.scrollTo({
+            top: centerY - window.innerHeight / 2,
+            behavior: 'smooth'
+          });
+        }
       }
     })();
     ''';
