@@ -1,58 +1,55 @@
 # Annoti
 
-一个阅读的工具，主要用于阅读时批注的需求。
+A tool for reading, mainly focused on annotation.
 
-## 平台要求 / Platform Requirements
+## Platform Requirements
 
-**⚠️ 重要：本应用目前仅支持 Windows 桌面平台**
+**⚠️ Important: This application currently supports Windows desktop platforms only**
 
-- ✅ **Windows Desktop** (推荐 Windows 10/11)
-- ❌ Web 浏览器（不支持）
-- ❌ macOS / Linux（暂不支持）
+- ✅ **Windows Desktop** (Windows 10/11 recommended)
+- ❌ Web browsers (not supported)
+- ❌ macOS / Linux (not supported yet)
 
-**系统要求：**
+**System requirements:**
 - Windows 10/11
-- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) （通常已预装）
+- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually preinstalled)
 
 ----
 
-目前：
+Current status:
 
-- ~~暂定使用Tauri + Vue + TypeScript的架构，后端使用Rust但是暂时好像用不上~~暂定使用Flutter(Dart)；
-- 还处于Start-up阶段，不接受PR~~没准又会鸽很久~~。
+- ~~Initially planned to use a Tauri + Vue + TypeScript stack with a Rust backend, but that seems unnecessary for now~~ Currently tentatively using Flutter (Dart);
+- Still in the startup stage, not accepting PRs for now ~~may end up being postponed for a long time~~.
 - SPAGHETTI
 
+Currently, the basic goals are modeled after the features that [Zhizhi Reader](https://www.zhizhireader.com/) can achieve (this project has no affiliation with that product and is only used for reference).
 
-目前暂时以[知之阅读](https://www.zhizhireader.com/)所能实现的功能为基本目标（本项目该项目没有任何的利益关系，仅作参照之用）。
+Right now I use MS Word to meet my needs, but Word has far too many features; I want something dedicated to annotation and reading — editable text seems unnecessary.
 
-现在是用的MS Word满足我的需求，但MS Word的功能实在太多了，我希望它能专注于批注和阅读——看上去可编辑是不必要的。 
+-> Maybe we can draw on some RTF experience.
 
--> 或许可以借鉴一些RTF的经验。
+Other references that look useful but I haven't actually used: [Calibre](https://github.com/kovidgoyal/calibre), [Bookxnote](http://www.bookxnote.com/), [Sumatra](https://github.com/sumatrapdfreader/sumatrapdf), [Koodo](https://github.com/koodo-reader/koodo-reader).
 
-看上去可以作为参照但是实际还没用过的：[Calibre](https://github.com/kovidgoyal/calibre)、[Bookxnote](http://www.bookxnote.com/)、[Sumatra](https://github.com/sumatrapdfreader/sumatrapdf)、[Koodo](https://github.com/koodo-reader/koodo-reader)。
+I originally wanted a Windows-native app (because I primarily use Windows). After considering WinUI3, JavaFX, JavaSwing, and Electron, I finally chose Tauri for its better performance — maybe it can become cross-platform.
 
-本来想做Windows Native的（因为自己平时也只用 Windows），考虑了WinUI3、JavaFX、JavaSwing和Electron架构之后，最后选择了性能更好的Tauri，没准也能做跨平台。
+Core requirements (in my opinion):
 
-个人认为的比较核心的需求：
+1. Robust text compatibility:
+   1. Must support rendering at least Text, Markdown, PDF, Epub, and HTML formats;
+   2. No immediate i18n requirement — handling Chinese alone is already difficult enough. Western-centric note-taking software aside, CJK typesetting is a major pain point; I believe Zhizhi Reader still has significant room for improvement in Chinese typography;
+   3. Reading inevitably involves long texts, e.g., web novels with millions of characters (though I personally don't read those :P). Ensure good performance while supporting CRUD for very large texts.
+2. Annotation threads:
+   1. Record annotations like community discussions in timestamp order and enable transfer between friends to allow discussion;
+   2. But it should be offline — I prefer it to work offline. Services like Notion are powerful but forcing an internet connection is very annoying;
+   3. I want annotations to feel like "sticky notes attached to the book" rather than endnotes; visualization and user customization will need attention;
+   4. Packaging annotated text together with the original text might make management and offline sharing between friends easier.
+3. Good performance:
+   1. Should not stutter or drop frames on a normal device;
+   2. UI optimization and rendering are also big challenges.
+4. Others:
+   1. Version control like Git? To avoid accidentally changing the original text — still deciding whether the original should be editable;
+   2. Richer, highly customizable typesetting like Adobe InDesign — a huge rabbit hole.
 
-1. 良好的文本兼容：
-   1. 至少需要满足Text、Markdown、PDF、Epub、HTML格式的文件的渲染；
-   2. 暂时没有i18n的需求，或者说光是处理中文本身就已经很有难度了——西文为主导的那些笔记软件自不必说，CJK大坑，知之阅读在中文排版上的功能我认为还有很大的改进的空间；
-   3. 阅读中不可避免长文本的阅读，例如上百万字的网文小说（虽然我自己是不看w），保证性能的同时也要保证大文本的CRUD正常；
-2. 批注讨论串：
-   1. 如同在社群内讨论一样，按时间戳的形式记录各种批注，并可以在朋友间传输，实现讨论；
-   2. 但它是**离线**的，进一步说我更希望它是离线就能用的，像Notion这种虽然功能强大但是强制联网实在恼人；
-   3. 我希望这个批注更像是**贴在书上的小纸条**那种感觉，而不是说尾注，在可视化和用户自定义上肯定要下功夫；
-   4. 带有批注的文本和原文封装存储可能会更易于管理（主要是朋友间离线传输）。
-3. 良好的性能：
-   1. 至少在一台正常的设备上不应该出现掉帧卡顿；
-   2. 界面优化和渲染也是大坑。
-4. 其他的：
-   1. 像Git一样做版本控制？避免手欠把原文改了——其实要不要做原文的可编辑还在考虑；
-   2. 如Adobe InDesign那样更为丰富的可自定义化的排版——天坑。
+License is undecided for now. Later we will probably pull in other libraries to simplify GUI development (reinventing-the-wheel series); if a licensing approach becomes appropriate we can adopt it.
 
-
-
-License暂时还不确定，后续大概率要引一些其他东西来简化GUI的开发流程（造轮子系列），如果到时候有协议传播那么直接套就好了。
-
-Git Commit目前暂时使用[约定式提交](https://www.conventionalcommits.org/zh-hans/v1.0.0-beta.4/)，使用[git-commitizen](https://www.cnblogs.com/Irving/p/5146738.html)进行自动化提交配置。
+Git commits currently follow the [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0-beta.4/) spec, using [git-commitizen](https://www.cnblogs.com/Irving/p/5146738.html) for automated commit tooling.
