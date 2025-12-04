@@ -246,14 +246,15 @@ function sendSelection() {
     if (selection.toString().length > 0) {
       const range = selection.getRangeAt(0);
       const data = {
+        handler: 'onTextSelected',
         text: selection.toString(),
         anchorId: generateAnchorId(range),
         startOffset: range.startOffset,
         endOffset: range.endOffset
       };
       
-      if (window.flutter_inappwebview) {
-        window.flutter_inappwebview.callHandler('onTextSelected', data);
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(JSON.stringify(data));
       }
     }
   } catch (error) {
@@ -299,8 +300,12 @@ document.addEventListener('click', function(e) {
   try {
     if (e.target.classList.contains('annotation-highlight')) {
       const annotationId = e.target.getAttribute('data-annotation-id');
-      if (window.flutter_inappwebview && annotationId) {
-        window.flutter_inappwebview.callHandler('onAnnotationClicked', annotationId);
+      if (window.chrome && window.chrome.webview && annotationId) {
+        const data = {
+          handler: 'onAnnotationClicked',
+          annotationId: annotationId
+        };
+        window.chrome.webview.postMessage(JSON.stringify(data));
       }
     }
   } catch (error) {

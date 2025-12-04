@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview_windows/flutter_inappwebview_windows.dart';
+import 'package:webview_windows/webview_windows.dart';
 import '../models/annotation.dart';
 
 /// Controller for WebView management and JavaScript Bridge
 class WebViewController {
-  InAppWebViewController? _webViewController;
+  WebviewController? _webViewController;
   final Function(String text, String anchorId, int startOffset, int endOffset)?
       onTextSelected;
   final Function(String annotationId)? onAnnotationClicked;
@@ -16,7 +16,7 @@ class WebViewController {
   });
 
   /// Initialize WebView controller
-  void setWebViewController(InAppWebViewController controller) {
+  void setWebViewController(WebviewController controller) {
     _webViewController = controller;
   }
 
@@ -24,11 +24,7 @@ class WebViewController {
   Future<void> loadHtmlContent(String htmlContent) async {
     if (_webViewController == null) return;
 
-    await _webViewController!.loadData(
-      data: htmlContent,
-      mimeType: 'text/html',
-      encoding: 'utf-8',
-    );
+    await _webViewController!.loadStringContent(htmlContent);
   }
 
   /// Inject JavaScript to highlight an annotation
@@ -91,7 +87,7 @@ class WebViewController {
     }
     ''';
 
-    await _webViewController!.evaluateJavascript(source: script);
+    await _webViewController!.executeScript(script);
   }
 
   /// Highlight multiple annotations
@@ -118,7 +114,7 @@ class WebViewController {
     })();
     ''';
 
-    await _webViewController!.evaluateJavascript(source: script);
+    await _webViewController!.executeScript(script);
   }
 
   /// Clear all highlights
@@ -138,7 +134,7 @@ class WebViewController {
     })();
     ''';
 
-    await _webViewController!.evaluateJavascript(source: script);
+    await _webViewController!.executeScript(script);
   }
 
   /// Scroll to annotation
@@ -154,7 +150,7 @@ class WebViewController {
     })();
     ''';
 
-    await _webViewController!.evaluateJavascript(source: script);
+    await _webViewController!.executeScript(script);
   }
 
   /// Escape string for JavaScript

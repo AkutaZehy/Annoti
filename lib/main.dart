@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview_windows/flutter_inappwebview_windows.dart';
 import 'pages/editor_page.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize WebView for Windows
-  if (InAppWebViewPlatform.instance is WindowsInAppWebViewPlatform) {
-    await WindowsInAppWebViewPlatform.instance!.init();
-  }
-  
+void main() {
   runApp(const AnnotiApp());
 }
 

@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview_windows/flutter_inappwebview_windows.dart';
+import 'package:webview_windows/webview_windows.dart';
 import '../models/annotation.dart';
 import '../services/file_service.dart';
 import '../services/html_service.dart';
@@ -22,6 +23,7 @@ class _EditorPageState extends State<EditorPage> {
   final HtmlService _htmlService = HtmlService();
   final AnnotationService _annotationService = AnnotationService();
   late app_controller.WebViewController _webViewController;
+  final _webviewController = WebviewController();
 
   String? _currentFilePath;
   String? _currentFileName;
@@ -32,6 +34,7 @@ class _EditorPageState extends State<EditorPage> {
   final Set<String> _selectedAnnotationIds = {};
   Annotation? _activeAnnotation;
   Offset _stickyNotePosition = const Offset(100, 100);
+  bool _isWebViewReady = false;
 
   @override
   void initState() {
@@ -40,6 +43,43 @@ class _EditorPageState extends State<EditorPage> {
       onTextSelected: _handleTextSelected,
       onAnnotationClicked: _handleAnnotationClicked,
     );
+    _initWebView();
+  }
+
+  Future<void> _initWebView() async {
+    await _webviewController.initialize();
+    _webViewController.setWebViewController(_webviewController);
+    
+    // Set up message handler for JavaScript communication
+    _webviewController.webMessage.listen((message) {
+      try {
+        final jsonData = jsonDecode(message) as Map<String, dynamic>;
+        final handler = jsonData['handler'] as String?;
+        
+        if (handler == 'onTextSelected') {
+          _handleTextSelected(
+            jsonData['text'] as String,
+            jsonData['anchorId'] as String,
+            jsonData['startOffset'] as int,
+            jsonData['endOffset'] as int,
+          );
+        } else if (handler == 'onAnnotationClicked') {
+          _handleAnnotationClicked(jsonData['annotationId'] as String);
+        }
+      } catch (e) {
+        debugPrint('Error processing web message: $e');
+      }
+    });
+    
+    setState(() {
+      _isWebViewReady = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _webviewController.dispose();
+    super.dispose();
   }
 
   Future<void> _openFile() async {
@@ -409,39 +449,14 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   Widget _buildWebView() {
-    return InAppWebView(
-      initialSettings: InAppWebViewSettings(
-        transparentBackground: true,
-        useShouldOverrideUrlLoading: true,
-      ),
-      onWebViewCreated: (controller) {
-        _webViewController.setWebViewController(controller);
-        
-        // Register JavaScript handlers
-        controller.addJavaScriptHandler(
-          handlerName: 'onTextSelected',
-          callback: (args) {
-            if (args.isNotEmpty && args[0] is Map) {
-              final data = args[0] as Map;
-              _handleTextSelected(
-                data['text'] as String,
-                data['anchorId'] as String,
-                data['startOffset'] as int,
-                data['endOffset'] as int,
-              );
-            }
-          },
-        );
+    if (!_isWebViewReady) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-        controller.addJavaScriptHandler(
-          handlerName: 'onAnnotationClicked',
-          callback: (args) {
-            if (args.isNotEmpty) {
-              _handleAnnotationClicked(args[0] as String);
-            }
-          },
-        );
-      },
+    return Webview(
+      _webviewController,
     );
   }
 
