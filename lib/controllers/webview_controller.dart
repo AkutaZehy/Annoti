@@ -97,11 +97,12 @@ class WebViewController {
       existing.forEach(el => el.remove());
       
       // Create highlights based on mode
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      
       if (mode === 'box') {
         // Box mode: create a single box around the entire selection
         const boundingRect = range.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
         
         const overlay = document.createElement('div');
         overlay.className = 'annotation-overlay annotation-overlay-box';
@@ -124,17 +125,19 @@ class WebViewController {
         
         overlayContainer.appendChild(overlay);
       } else {
-        // Text mode: create overlays for each line
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-        
+        // Text mode: create precise line-by-line overlays that only cover selected text
+        // Each rect represents exactly the selected text on that line
         for (let i = 0; i < rects.length; i++) {
           const rect = rects[i];
+          // Skip empty rects (can happen with line breaks)
           if (rect.width === 0 || rect.height === 0) continue;
           
           const overlay = document.createElement('div');
           overlay.className = 'annotation-overlay annotation-overlay-text';
           overlay.setAttribute('data-annotation-id', annotationId);
+          // Store rect info for scrolling to center calculation
+          overlay.setAttribute('data-rect-index', i);
+          overlay.setAttribute('data-rect-count', rects.length);
           overlay.style.cssText = `
             position: absolute;
             left: ${rect.left + scrollLeft}px;
@@ -287,7 +290,7 @@ class WebViewController {
     await _webViewController!.executeScript(script);
   }
 
-  /// Scroll to annotation
+  /// Scroll to annotation - centers the highlighted text in viewport
   Future<void> scrollToAnnotation(String annotationId) async {
     if (_webViewController == null) return;
 
@@ -295,15 +298,41 @@ class WebViewController {
     (function() {
       const overlayContainer = document.getElementById('annotation-overlay-container');
       if (overlayContainer) {
-        const overlay = overlayContainer.querySelector('[data-annotation-id="${annotationId}"]');
-        if (overlay) {
+        const overlays = overlayContainer.querySelectorAll('[data-annotation-id="${annotationId}"]');
+        if (overlays.length === 0) return;
+        
+        // Calculate the center point of all overlays as a group
+        let minTop = Infinity;
+        let maxBottom = -Infinity;
+        let minLeft = Infinity;
+        let maxRight = -Infinity;
+        
+        overlays.forEach(overlay => {
           const rect = overlay.getBoundingClientRect();
-          const absoluteTop = rect.top + window.pageYOffset;
-          window.scrollTo({
-            top: absoluteTop - window.innerHeight / 2 + rect.height / 2,
-            behavior: 'smooth'
-          });
-        }
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+          
+          const absoluteTop = rect.top + scrollTop;
+          const absoluteBottom = rect.bottom + scrollTop;
+          const absoluteLeft = rect.left + scrollLeft;
+          const absoluteRight = rect.right + scrollLeft;
+          
+          minTop = Math.min(minTop, absoluteTop);
+          maxBottom = Math.max(maxBottom, absoluteBottom);
+          minLeft = Math.min(minLeft, absoluteLeft);
+          maxRight = Math.max(maxRight, absoluteRight);
+        });
+        
+        // Calculate center of all highlighted lines
+        const centerY = (minTop + maxBottom) / 2;
+        const centerX = (minLeft + maxRight) / 2;
+        
+        // Scroll to center the highlighted text vertically in viewport
+        window.scrollTo({
+          top: centerY - window.innerHeight / 2,
+          left: centerX - window.innerWidth / 2,
+          behavior: 'smooth'
+        });
       }
     })();
     ''';
