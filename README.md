@@ -2,6 +2,27 @@
 
 一个阅读的工具，主要用于阅读时批注的需求。
 
+## 平台要求 / Platform Requirements
+
+**⚠️ 重要：本应用目前仅支持 Windows 桌面平台**
+
+- ✅ **Windows Desktop** (推荐 Windows 10/11)
+- ❌ Web 浏览器（不支持）
+- ❌ macOS / Linux（暂不支持）
+
+**系统要求：**
+- Windows 10/11
+- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (通常已预装)
+
+**Important: This application currently supports Windows desktop only**
+
+- ✅ **Windows Desktop** (Windows 10/11 recommended)
+- ❌ Web browsers (Not supported)
+- ❌ macOS / Linux (Not yet supported)
+
+**System Requirements:**
+- Windows 10/11
+- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually pre-installed)
 
 
 目前：

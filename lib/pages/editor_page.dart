@@ -35,6 +35,7 @@ class _EditorPageState extends State<EditorPage> {
   Annotation? _activeAnnotation;
   Offset _stickyNotePosition = const Offset(100, 100);
   bool _isWebViewReady = false;
+  String? _webViewError;
 
   @override
   void initState() {
@@ -47,33 +48,41 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   Future<void> _initWebView() async {
-    await _webviewController.initialize();
-    _webViewController.setWebViewController(_webviewController);
-    
-    // Set up message handler for JavaScript communication
-    _webviewController.webMessage.listen((message) {
-      try {
-        final jsonData = jsonDecode(message) as Map<String, dynamic>;
-        final handler = jsonData['handler'] as String?;
-        
-        if (handler == 'onTextSelected') {
-          _handleTextSelected(
-            jsonData['text'] as String,
-            jsonData['anchorId'] as String,
-            jsonData['startOffset'] as int,
-            jsonData['endOffset'] as int,
-          );
-        } else if (handler == 'onAnnotationClicked') {
-          _handleAnnotationClicked(jsonData['annotationId'] as String);
+    try {
+      await _webviewController.initialize();
+      _webViewController.setWebViewController(_webviewController);
+      
+      // Set up message handler for JavaScript communication
+      _webviewController.webMessage.listen((message) {
+        try {
+          final jsonData = jsonDecode(message) as Map<String, dynamic>;
+          final handler = jsonData['handler'] as String?;
+          
+          if (handler == 'onTextSelected') {
+            _handleTextSelected(
+              jsonData['text'] as String,
+              jsonData['anchorId'] as String,
+              jsonData['startOffset'] as int,
+              jsonData['endOffset'] as int,
+            );
+          } else if (handler == 'onAnnotationClicked') {
+            _handleAnnotationClicked(jsonData['annotationId'] as String);
+          }
+        } catch (e) {
+          debugPrint('Error processing web message: $e');
         }
-      } catch (e) {
-        debugPrint('Error processing web message: $e');
-      }
-    });
-    
-    setState(() {
-      _isWebViewReady = true;
-    });
+      });
+      
+      setState(() {
+        _isWebViewReady = true;
+      });
+    } catch (e) {
+      setState(() {
+        _webViewError = 'Failed to initialize WebView: $e';
+        _statusMessage = 'WebView initialization failed. See error message.';
+      });
+      debugPrint('WebView initialization error: $e');
+    }
   }
 
   @override
@@ -449,9 +458,55 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   Widget _buildWebView() {
+    if (_webViewError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red.shade700,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'WebView Error',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _webViewError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Please ensure you are running on Windows desktop with WebView2 runtime installed.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     if (!_isWebViewReady) {
       return const Center(
-        child: CircularProgressIndicator(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Initializing WebView...'),
+          ],
+        ),
       );
     }
 
