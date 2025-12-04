@@ -274,30 +274,6 @@ class AnnotiWebViewController {
       
       overlayContainer.appendChild(overlay);
     }
-      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-      
-      const overlay = document.createElement('div');
-      overlay.className = 'annotation-overlay annotation-overlay-box';
-      overlay.setAttribute('data-annotation-id', annotationId);
-      overlay.setAttribute('data-range-text', text);
-      overlay.setAttribute('data-anchor-id', anchorId);
-      overlay.style.cssText = 
-        'position: absolute;' +
-        'left: ' + (boundingRect.left + scrollLeft) + 'px;' +
-        'top: ' + (boundingRect.top + scrollTop) + 'px;' +
-        'width: ' + boundingRect.width + 'px;' +
-        'height: ' + boundingRect.height + 'px;' +
-        'background-color: rgba(255, 243, 205, 1);' +
-        'border: 2px solid #ffc107;' +
-        'pointer-events: auto;' +
-        'cursor: pointer;';
-      
-      overlay.addEventListener('click', function() {
-        notifyAnnotationClick(annotationId);
-      });
-      
-      overlayContainer.appendChild(overlay);
-    }
     
     // Recalculate all overlay positions on window resize
     function recalculateAllOverlays() {

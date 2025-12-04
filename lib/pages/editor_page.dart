@@ -533,13 +533,23 @@ class _EditorPageState extends State<EditorPage> {
                   _currentHighlightType == 'text' ? Icons.text_format : Icons.check_box_outline_blank,
                   color: _currentHighlightType == 'text' ? Colors.orange : Colors.blue,
                 ),
-                onPressed: () {
+                onPressed: () async {
                   setState(() {
                     _currentHighlightType = _currentHighlightType == 'text' ? 'box' : 'text';
                     _statusMessage = _currentHighlightType == 'text' 
                         ? '当前模式：文本高亮'
                         : '当前模式：框选高亮';
                   });
+                  // Notify WebView of mode change
+                  if (_isWebViewReady) {
+                    try {
+                      await _webviewController.executeScript(
+                        'if (window.setAnnotationMode) { window.setAnnotationMode("$_currentHighlightType"); }'
+                      );
+                    } catch (e) {
+                      debugPrint('Error setting annotation mode: $e');
+                    }
+                  }
                 },
               ),
             ),

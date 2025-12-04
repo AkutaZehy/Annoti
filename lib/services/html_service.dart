@@ -340,13 +340,20 @@ function endBoxDrawing(e) {
   
   // Only send if box has meaningful size
   if (width > 10 && height > 10) {
+    const boxData = {
+      left: left,
+      top: top,
+      width: width,
+      height: height
+    };
+    
     const data = {
       handler: 'onBoxDrawn',
       left: left,
       top: top,
       width: width,
       height: height,
-      anchorId: 'box_' + Date.now(),
+      anchorId: 'box:' + JSON.stringify(boxData),
       text: '' // No text for box annotations
     };
     
@@ -385,14 +392,64 @@ function highlightAnnotation(anchorId, annotationId) {
   console.log('Highlighting annotation:', anchorId, annotationId);
 }
 
-// Add event listeners
-document.addEventListener('mouseup', sendSelection);
-document.addEventListener('touchend', sendSelection);
+// Event listeners - conditionally added based on mode
+let textModeListenersActive = false;
+let boxModeListenersActive = false;
 
-// Box drawing listeners
-document.querySelector('.markdown-body').addEventListener('mousedown', startBoxDrawing);
-document.addEventListener('mousemove', updateBoxDrawing);
-document.addEventListener('mouseup', endBoxDrawing);
+function enableTextModeListeners() {
+  if (!textModeListenersActive) {
+    document.addEventListener('mouseup', sendSelection);
+    document.addEventListener('touchend', sendSelection);
+    textModeListenersActive = true;
+  }
+}
+
+function disableTextModeListeners() {
+  if (textModeListenersActive) {
+    document.removeEventListener('mouseup', sendSelection);
+    document.removeEventListener('touchend', sendSelection);
+    textModeListenersActive = false;
+  }
+}
+
+function enableBoxModeListeners() {
+  if (!boxModeListenersActive) {
+    const markdownBody = document.querySelector('.markdown-body');
+    if (markdownBody) {
+      markdownBody.addEventListener('mousedown', startBoxDrawing);
+      document.addEventListener('mousemove', updateBoxDrawing);
+      document.addEventListener('mouseup', endBoxDrawing);
+      boxModeListenersActive = true;
+    }
+  }
+}
+
+function disableBoxModeListeners() {
+  if (boxModeListenersActive) {
+    const markdownBody = document.querySelector('.markdown-body');
+    if (markdownBody) {
+      markdownBody.removeEventListener('mousedown', startBoxDrawing);
+    }
+    document.removeEventListener('mousemove', updateBoxDrawing);
+    document.removeEventListener('mouseup', endBoxDrawing);
+    boxModeListenersActive = false;
+  }
+}
+
+// Initialize with text mode
+enableTextModeListeners();
+
+// Mode switching function (called from Flutter)
+window.setAnnotationMode = function(mode) {
+  window.annotationHighlightMode = mode;
+  if (mode === 'text') {
+    disableBoxModeListeners();
+    enableTextModeListeners();
+  } else if (mode === 'box') {
+    disableTextModeListeners();
+    enableBoxModeListeners();
+  }
+};
 
 // Handle annotation clicks
 document.addEventListener('click', function(e) {
