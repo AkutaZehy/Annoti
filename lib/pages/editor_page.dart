@@ -28,7 +28,7 @@ class _EditorPageState extends State<EditorPage> {
   String? _currentFilePath;
   String? _currentFileName;
   List<Annotation> _annotations = [];
-  String _statusMessage = 'Please open a Markdown or Text file.';
+  String _statusMessage = '请打开 Markdown 或文本文件';
   bool _isEditMode = false; // false = read mode, true = edit mode
   bool _isMultiSelectMode = false;
   final Set<String> _selectedAnnotationIds = {};
@@ -79,7 +79,7 @@ class _EditorPageState extends State<EditorPage> {
     } catch (e) {
       setState(() {
         _webViewError = 'Failed to initialize WebView: $e';
-        _statusMessage = 'WebView initialization failed. See error message.';
+        _statusMessage = 'WebView 初始化失败。查看错误信息。';
       });
       debugPrint('WebView initialization error: $e');
     }
@@ -95,7 +95,7 @@ class _EditorPageState extends State<EditorPage> {
     try {
       final fileData = await _fileService.selectAndOpenFile();
       if (fileData == null) {
-        setState(() => _statusMessage = 'No file selected.');
+        setState(() => _statusMessage = '未选择文件');
         return;
       }
 
@@ -112,7 +112,7 @@ class _EditorPageState extends State<EditorPage> {
         _currentFilePath = fileData.path;
         _currentFileName = fileData.name;
         _annotations = annotations;
-        _statusMessage = 'File loaded successfully.';
+        _statusMessage = '文件加载成功';
         _activeAnnotation = null;
       });
 
@@ -122,7 +122,7 @@ class _EditorPageState extends State<EditorPage> {
       // Highlight existing annotations
       await _webViewController.highlightAnnotations(_annotations);
       
-      setState(() => _statusMessage = 'File loaded with ${_annotations.length} annotations.');
+      setState(() => _statusMessage = '已加载文件，包含 ${_annotations.length} 个批注');
     } catch (e) {
       setState(() => _statusMessage = 'Error opening file: $e');
     }
@@ -168,14 +168,14 @@ class _EditorPageState extends State<EditorPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create Annotation'),
+        title: const Text('创建批注'),
         content: SizedBox(
           width: 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Selected text:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('选中的文本:', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(8),
@@ -190,13 +190,13 @@ class _EditorPageState extends State<EditorPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Note:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('批注内容:', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               TextField(
                 controller: noteController,
                 maxLines: 5,
                 decoration: const InputDecoration(
-                  hintText: 'Enter your note here...',
+                  hintText: '在此输入批注内容...',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -206,7 +206,7 @@ class _EditorPageState extends State<EditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('取消'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -224,7 +224,7 @@ class _EditorPageState extends State<EditorPage> {
               await _addAnnotation(annotation);
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text('Save'),
+            child: const Text('保存'),
           ),
         ],
       ),
@@ -240,7 +240,7 @@ class _EditorPageState extends State<EditorPage> {
       
       setState(() {
         _annotations.add(annotation);
-        _statusMessage = 'Annotation created successfully.';
+        _statusMessage = '批注创建成功';
       });
     } catch (e) {
       setState(() => _statusMessage = 'Error creating annotation: $e');
@@ -253,19 +253,19 @@ class _EditorPageState extends State<EditorPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Annotation'),
+        title: const Text('编辑批注'),
         content: TextField(
           controller: noteController,
           maxLines: 5,
           decoration: const InputDecoration(
-            hintText: 'Enter your note here...',
+            hintText: '在此输入批注内容...',
             border: OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('取消'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -277,7 +277,7 @@ class _EditorPageState extends State<EditorPage> {
               await _updateAnnotation(updated);
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text('Save'),
+            child: const Text('保存'),
           ),
         ],
       ),
@@ -298,7 +298,7 @@ class _EditorPageState extends State<EditorPage> {
         if (_activeAnnotation?.id == annotation.id) {
           _activeAnnotation = annotation;
         }
-        _statusMessage = 'Annotation updated successfully.';
+        _statusMessage = '批注更新成功';
       });
     } catch (e) {
       setState(() => _statusMessage = 'Error updating annotation: $e');
@@ -311,17 +311,17 @@ class _EditorPageState extends State<EditorPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Annotation'),
-        content: const Text('Are you sure you want to delete this annotation?'),
+        title: const Text('删除批注'),
+        content: const Text('确定要删除这条批注吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('取消'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text('删除'),
           ),
         ],
       ),
@@ -338,7 +338,7 @@ class _EditorPageState extends State<EditorPage> {
         if (_activeAnnotation?.id == annotation.id) {
           _activeAnnotation = null;
         }
-        _statusMessage = 'Annotation deleted successfully.';
+        _statusMessage = '批注删除成功';
       });
     } catch (e) {
       setState(() => _statusMessage = 'Error deleting annotation: $e');
@@ -362,7 +362,7 @@ class _EditorPageState extends State<EditorPage> {
         _annotations.removeWhere((a) => _selectedAnnotationIds.contains(a.id));
         _selectedAnnotationIds.clear();
         _isMultiSelectMode = false;
-        _statusMessage = 'Selected annotations deleted.';
+        _statusMessage = '选中的批注已删除';
       });
     } catch (e) {
       setState(() => _statusMessage = 'Error deleting annotations: $e');
@@ -377,13 +377,13 @@ class _EditorPageState extends State<EditorPage> {
         actions: [
           IconButton(
             icon: Icon(_isEditMode ? Icons.visibility : Icons.edit),
-            tooltip: _isEditMode ? 'Switch to Read Mode' : 'Switch to Edit Mode',
+            tooltip: _isEditMode ? '切换到阅读模式' : '切换到编辑模式',
             onPressed: () {
               setState(() {
                 _isEditMode = !_isEditMode;
                 _statusMessage = _isEditMode 
-                    ? 'Edit mode: Select text to annotate'
-                    : 'Read mode: View only';
+                    ? '编辑模式：选择文本以添加批注'
+                    : '阅读模式：仅查看';
               });
             },
           ),
@@ -424,21 +424,21 @@ class _EditorPageState extends State<EditorPage> {
           const SizedBox(height: 16),
           IconButton(
             icon: const Icon(Icons.folder_open),
-            tooltip: 'Open File',
+            tooltip: '打开文件',
             onPressed: _openFile,
           ),
           if (_isEditMode && _isMultiSelectMode) ...[
             const SizedBox(height: 16),
             IconButton(
               icon: const Icon(Icons.delete_forever, color: Colors.red),
-              tooltip: 'Delete Selected',
+              tooltip: '删除选中',
               onPressed: _selectedAnnotationIds.isEmpty 
                   ? null 
                   : _deleteSelectedAnnotations,
             ),
             IconButton(
               icon: const Icon(Icons.cancel),
-              tooltip: 'Cancel',
+              tooltip: '取消',
               onPressed: () {
                 setState(() {
                   _isMultiSelectMode = false;
@@ -450,7 +450,7 @@ class _EditorPageState extends State<EditorPage> {
             const SizedBox(height: 16),
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              tooltip: 'Multi-select',
+              tooltip: '多选删除',
               onPressed: () {
                 setState(() => _isMultiSelectMode = true);
               },

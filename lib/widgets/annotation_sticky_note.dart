@@ -11,6 +11,7 @@ class AnnotationStickyNote extends StatefulWidget {
   final VoidCallback onDelete;
   final Offset position;
   final Function(Offset)? onPositionChanged;
+  final VoidCallback? onReset; // For resetting position and size
 
   const AnnotationStickyNote({
     super.key,
@@ -20,6 +21,7 @@ class AnnotationStickyNote extends StatefulWidget {
     required this.onDelete,
     required this.position,
     this.onPositionChanged,
+    this.onReset,
   });
 
   @override
@@ -32,20 +34,69 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
   double _width = 300;
   double _height = 100;
   
-  // Minimum and maximum sizes
+  // Minimum and maximum sizes - max set to screen size
   static const double _minWidth = 250;
-  static const double _maxWidth = 600;
   static const double _minHeight = 100;
-  static const double _maxHeight = 600;
+  
+  double get _maxWidth => MediaQuery.of(context).size.width - 40; // 20px margin on each side
+  double get _maxHeight => MediaQuery.of(context).size.height - 40;
 
   @override
   void initState() {
     super.initState();
     _position = widget.position;
   }
+  
+  @override
+  void didUpdateWidget(AnnotationStickyNote oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset position and size when annotation changes
+    if (oldWidget.annotation.id != widget.annotation.id) {
+      _resetPositionAndSize();
+    }
+  }
+  
+  // Reset position and size to defaults
+  void _resetPositionAndSize() {
+    setState(() {
+      _position = widget.position;
+      _width = 300;
+      _height = 100;
+      _isExpanded = false;
+    });
+  }
+  
+  // Constrain position to stay within screen bounds
+  Offset _constrainPosition(Offset newPosition, Size noteSize) {
+    final screenSize = MediaQuery.of(context).size;
+    final maxX = screenSize.width - noteSize.width;
+    final maxY = screenSize.height - noteSize.height;
+    
+    return Offset(
+      newPosition.dx.clamp(0.0, maxX.clamp(0.0, screenSize.width)),
+      newPosition.dy.clamp(0.0, maxY.clamp(0.0, screenSize.height)),
+    );
+  }
+  
+  Size get _currentSize {
+    return Size(
+      _isExpanded ? _width : 300,
+      _isExpanded ? _height : 140,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Ensure position is within bounds on each build
+    final constrainedPosition = _constrainPosition(_position, _currentSize);
+    if (constrainedPosition != _position) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _position = constrainedPosition;
+        });
+      });
+    }
+    
     return Positioned(
       left: _position.dx,
       top: _position.dy,
@@ -83,10 +134,11 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                     GestureDetector(
                       onPanUpdate: (details) {
                         setState(() {
-                          _position = Offset(
+                          final newPosition = Offset(
                             _position.dx + details.delta.dx,
                             _position.dy + details.delta.dy,
                           );
+                          _position = _constrainPosition(newPosition, _currentSize);
                         });
                         widget.onPositionChanged?.call(_position);
                       },
@@ -118,7 +170,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Annotation',
+                                '批注',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -133,7 +185,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                               ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              tooltip: _isExpanded ? 'Collapse' : 'Expand',
+                              tooltip: _isExpanded ? '折叠' : '展开',
                               onPressed: () {
                                 setState(() {
                                   _isExpanded = !_isExpanded;
@@ -150,7 +202,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                               icon: const Icon(Icons.close, size: 16),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              tooltip: 'Close',
+                              tooltip: '关闭',
                               onPressed: widget.onClose,
                             ),
                           ],
@@ -243,13 +295,13 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                           children: [
                             TextButton.icon(
                               icon: const Icon(Icons.edit, size: 14),
-                              label: const Text('Edit', style: TextStyle(fontSize: 12)),
+                              label: const Text('编辑', style: TextStyle(fontSize: 12)),
                               onPressed: widget.onEdit,
                             ),
                             const SizedBox(width: 8),
                             TextButton.icon(
                               icon: const Icon(Icons.delete, size: 14),
-                              label: const Text('Delete', style: TextStyle(fontSize: 12)),
+                              label: const Text('删除', style: TextStyle(fontSize: 12)),
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red,
                               ),
@@ -273,7 +325,10 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                 child: GestureDetector(
                   onPanUpdate: (details) {
                     setState(() {
-                      _width = (_width + details.delta.dx).clamp(_minWidth, _maxWidth);
+                      final newWidth = (_width + details.delta.dx).clamp(_minWidth, _maxWidth);
+                      _width = newWidth;
+                      // Ensure position stays within bounds after resize
+                      _position = _constrainPosition(_position, _currentSize);
                     });
                   },
                   child: MouseRegion(
@@ -294,7 +349,10 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                 child: GestureDetector(
                   onPanUpdate: (details) {
                     setState(() {
-                      _height = (_height + details.delta.dy).clamp(_minHeight, _maxHeight);
+                      final newHeight = (_height + details.delta.dy).clamp(_minHeight, _maxHeight);
+                      _height = newHeight;
+                      // Ensure position stays within bounds after resize
+                      _position = _constrainPosition(_position, _currentSize);
                     });
                   },
                   child: MouseRegion(
@@ -314,8 +372,12 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                 child: GestureDetector(
                   onPanUpdate: (details) {
                     setState(() {
-                      _width = (_width + details.delta.dx).clamp(_minWidth, _maxWidth);
-                      _height = (_height + details.delta.dy).clamp(_minHeight, _maxHeight);
+                      final newWidth = (_width + details.delta.dx).clamp(_minWidth, _maxWidth);
+                      final newHeight = (_height + details.delta.dy).clamp(_minHeight, _maxHeight);
+                      _width = newWidth;
+                      _height = newHeight;
+                      // Ensure position stays within bounds after resize
+                      _position = _constrainPosition(_position, _currentSize);
                     });
                   },
                   child: MouseRegion(

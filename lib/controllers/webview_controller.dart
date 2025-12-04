@@ -28,7 +28,7 @@ class WebViewController {
   }
 
   /// Inject JavaScript to highlight an annotation
-  /// Note: Improved implementation to handle formatted text and cross-element highlighting
+  /// Uses anchor ID for precise positioning to handle duplicate text
   Future<void> highlightAnnotation(Annotation annotation) async {
     if (_webViewController == null) return;
 
@@ -39,20 +39,146 @@ class WebViewController {
         const anchorId = '${annotation.anchorId}';
         const annotationId = '${annotation.id}';
         const text = ${_escapeJsString(annotation.selectedText)};
+        const startOffset = ${annotation.startOffset};
+        const endOffset = ${annotation.endOffset};
         
-        // Find and highlight text using improved algorithm
-        highlightTextByAnchor(anchorId, annotationId, text);
+        // Find and highlight text using anchor-based positioning
+        highlightTextByAnchor(anchorId, annotationId, text, startOffset, endOffset);
       } catch (e) {
         console.error('Error highlighting annotation:', e);
       }
     })();
     
-    function highlightTextByAnchor(anchorId, annotationId, text) {
+    function highlightTextByAnchor(anchorId, annotationId, text, startOffset, endOffset) {
       const body = document.querySelector('.markdown-body');
       if (!body) return;
       
-      // Use a more robust highlighting approach that handles formatted text
-      highlightTextInElement(body, text, annotationId);
+      // Parse anchor ID to get node path
+      const parts = anchorId.split('_').filter(p => p !== 'anchor' && p !== '');
+      if (parts.length === 0) {
+        // Fallback: search for text in document
+        highlightTextInElement(body, text, annotationId);
+        return;
+      }
+      
+      // Navigate to the node using the path
+      const nodePath = parts.slice(0, -1).map(p => parseInt(p));
+      const anchorOffset = parseInt(parts[parts.length - 1]);
+      
+      // Find the start node using path
+      let currentNode = body;
+      for (const index of nodePath) {
+        if (currentNode.childNodes && currentNode.childNodes[index]) {
+          currentNode = currentNode.childNodes[index];
+        } else {
+          // Path not valid, fallback to text search
+          highlightTextInElement(body, text, annotationId);
+          return;
+        }
+      }
+      
+      // Now we have the start node, create range and highlight
+      try {
+        const range = document.createRange();
+        const textLength = text.length;
+        
+        // Find text nodes starting from current position
+        const walker = document.createTreeWalker(
+          body,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+        
+        // Position walker at or near our start node
+        let node;
+        let foundStart = false;
+        while (node = walker.nextNode()) {
+          if (node === currentNode || node.contains(currentNode) || currentNode.contains(node)) {
+            foundStart = true;
+            break;
+          }
+        }
+        
+        if (!foundStart) {
+          // Fallback to text search
+          highlightTextInElement(body, text, annotationId);
+          return;
+        }
+        
+        // Now find the exact position using text matching
+        let textFound = false;
+        let searchPos = 0;
+        walker.currentNode = body;
+        
+        while (node = walker.nextNode()) {
+          const nodeText = node.textContent;
+          const nodeLength = nodeText.length;
+          
+          // Check if this node contains our text
+          for (let i = 0; i <= nodeLength; i++) {
+            if (searchPos + nodeLength >= startOffset && 
+                searchPos + i >= startOffset && 
+                nodeText.substring(i, i + textLength) === text) {
+              // Found it! Create highlight
+              range.setStart(node, i);
+              
+              // Find end node
+              let remaining = textLength;
+              let endNode = node;
+              let endOff = i + textLength;
+              
+              if (endOff > nodeLength) {
+                // Spans multiple nodes
+                let currentWalker = document.createTreeWalker(
+                  body,
+                  NodeFilter.SHOW_TEXT,
+                  null,
+                  false
+                );
+                currentWalker.currentNode = node;
+                
+                let covered = nodeLength - i;
+                remaining -= covered;
+                
+                while (remaining > 0 && (endNode = currentWalker.nextNode())) {
+                  if (remaining <= endNode.textContent.length) {
+                    endOff = remaining;
+                    break;
+                  }
+                  remaining -= endNode.textContent.length;
+                }
+              }
+              
+              range.setEnd(endNode, Math.min(endOff, endNode.textContent.length));
+              
+              // Extract and wrap with mark
+              const contents = range.extractContents();
+              const mark = document.createElement('mark');
+              mark.className = 'annotation-highlight';
+              mark.setAttribute('data-annotation-id', annotationId);
+              mark.appendChild(contents);
+              range.insertNode(mark);
+              
+              textFound = true;
+              break;
+            }
+          }
+          
+          if (textFound) break;
+          searchPos += nodeLength;
+        }
+        
+        if (!textFound) {
+          // Final fallback
+          highlightTextInElement(body, text, annotationId);
+        }
+        
+      } catch (e) {
+        console.error('Error in anchor-based highlighting:', e);
+        // Fallback to text search
+        highlightTextInElement(body, text, annotationId);
+      }
     }
     
     function highlightTextInElement(element, searchText, annotationId) {

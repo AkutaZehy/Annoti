@@ -7,9 +7,14 @@ import '../models/annotation.dart';
 /// Saves annotations as JSON files alongside source documents
 class AnnotationService {
   /// Get annotation file path for a source file
-  /// Example: document.md -> document.md.annotations.json
+  /// Saves in same-name directory alongside HTML file
+  /// Example: document.md -> document/annotations.json
   String getAnnotationFilePath(String sourceFilePath) {
-    return '$sourceFilePath.annotations.json';
+    final file = File(sourceFilePath);
+    final dir = file.parent.path;
+    final nameWithoutExt = path.basenameWithoutExtension(sourceFilePath);
+    final htmlDir = path.join(dir, nameWithoutExt);
+    return path.join(htmlDir, 'annotations.json');
   }
 
   /// Load annotations from JSON file
@@ -41,6 +46,12 @@ class AnnotationService {
   ) async {
     final annotationPath = getAnnotationFilePath(sourceFilePath);
     final file = File(annotationPath);
+
+    // Ensure directory exists
+    final dir = file.parent;
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
 
     try {
       final jsonList = annotations.map((a) => a.toJson()).toList();
