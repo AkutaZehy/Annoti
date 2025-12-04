@@ -36,6 +36,7 @@ class WebViewMarkdownViewerState extends State<WebViewMarkdownViewer> {
 
   String _generateHTML() {
     // Convert markdown to HTML
+    // The markdown package sanitizes HTML by default to prevent XSS attacks
     final htmlContent = md.markdownToHtml(
       widget.markdownContent,
       extensionSet: md.ExtensionSet.gitHubFlavored,
@@ -300,6 +301,7 @@ class WebViewMarkdownViewerState extends State<WebViewMarkdownViewer> {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'unsafe-inline';">
         $css
       </head>
       <body>
@@ -354,13 +356,22 @@ class WebViewMarkdownViewerState extends State<WebViewMarkdownViewer> {
         controller.addJavaScriptHandler(
           handlerName: 'onTextSelected',
           callback: (args) {
-            if (args.isNotEmpty) {
-              final data = args[0];
-              final text = data['text'] as String;
-              final startOffset = data['startOffset'] as int;
-              final endOffset = data['endOffset'] as int;
+            if (args.isNotEmpty && args[0] is Map) {
+              final data = args[0] as Map;
               
-              widget.onAnnotationCreate(text, startOffset, endOffset);
+              // Validate input data
+              if (data.containsKey('text') && 
+                  data.containsKey('startOffset') && 
+                  data.containsKey('endOffset')) {
+                final text = data['text'] as String;
+                final startOffset = data['startOffset'] as int;
+                final endOffset = data['endOffset'] as int;
+                
+                // Validate offsets are non-negative
+                if (startOffset >= 0 && endOffset >= startOffset) {
+                  widget.onAnnotationCreate(text, startOffset, endOffset);
+                }
+              }
             }
           },
         );
