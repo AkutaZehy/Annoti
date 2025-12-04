@@ -179,7 +179,11 @@ class WebViewMarkdownViewerState extends State<WebViewMarkdownViewer> {
             const range = selection.getRangeAt(0);
             const selectedText = selection.toString();
             
-            // Calculate approximate offset (this is a simplified approach)
+            // Calculate text offset within the document body
+            // NOTE: This uses innerText-based offset calculation, which counts only visible text
+            // and ignores HTML markup. This provides consistent offsets that match the text
+            // content used for highlighting, but may not work perfectly with complex nested
+            // HTML structures or dynamically modified content.
             const preCaretRange = range.cloneRange();
             preCaretRange.selectNodeContents(document.body);
             preCaretRange.setEnd(range.startContainer, range.startOffset);
@@ -207,18 +211,21 @@ class WebViewMarkdownViewerState extends State<WebViewMarkdownViewer> {
           
           annotations = annotationsData;
           
-          // Apply new highlights using text content matching
-          annotationsData.forEach((annotation, index) => {
-            highlightText(annotation.content, index);
+          // Sort annotations by startIndex to apply them in order
+          const sortedAnnotations = [...annotationsData].sort((a, b) => a.startIndex - b.startIndex);
+          
+          // Apply new highlights using startIndex and endIndex
+          sortedAnnotations.forEach((annotation, index) => {
+            highlightTextByOffset(annotation.startIndex, annotation.endIndex, index);
           });
         }
         
-        // Function to highlight specific text
-        function highlightText(searchText, annotationId) {
-          const bodyText = document.body.innerHTML;
-          const searchRegex = new RegExp(escapeRegExp(searchText), 'gi');
+        // Function to highlight text by character offset
+        function highlightTextByOffset(startOffset, endOffset, annotationId) {
+          const bodyText = document.body.innerText;
+          const targetText = bodyText.substring(startOffset, endOffset);
           
-          // Simple text replacement approach
+          // Walk through text nodes to find the range
           const walker = document.createTreeWalker(
             document.body,
             NodeFilter.SHOW_TEXT,
@@ -226,38 +233,52 @@ class WebViewMarkdownViewerState extends State<WebViewMarkdownViewer> {
             false
           );
           
-          const nodesToReplace = [];
+          let currentOffset = 0;
+          let startNode = null, startNodeOffset = 0;
+          let endNode = null, endNodeOffset = 0;
           let node;
+          
+          // Find start and end nodes
           while (node = walker.nextNode()) {
-            const text = node.textContent;
-            const index = text.indexOf(searchText);
-            if (index !== -1) {
-              nodesToReplace.push({node, index, length: searchText.length});
-              break; // Only highlight first occurrence
+            const nodeLength = node.textContent.length;
+            
+            if (!startNode && currentOffset + nodeLength > startOffset) {
+              startNode = node;
+              startNodeOffset = startOffset - currentOffset;
             }
+            
+            if (currentOffset + nodeLength >= endOffset) {
+              endNode = node;
+              endNodeOffset = endOffset - currentOffset;
+              break;
+            }
+            
+            currentOffset += nodeLength;
           }
           
-          nodesToReplace.forEach(({node, index, length}) => {
-            const before = node.textContent.substring(0, index);
-            const match = node.textContent.substring(index, index + length);
-            const after = node.textContent.substring(index + length);
+          // Apply highlight if both nodes found
+          if (startNode && endNode) {
+            const range = document.createRange();
+            range.setStart(startNode, startNodeOffset);
+            range.setEnd(endNode, endNodeOffset);
             
             const mark = document.createElement('mark');
             mark.className = 'annotation-highlight';
             mark.setAttribute('data-annotation-id', annotationId);
-            mark.textContent = match;
             
-            const fragment = document.createDocumentFragment();
-            if (before) fragment.appendChild(document.createTextNode(before));
-            fragment.appendChild(mark);
-            if (after) fragment.appendChild(document.createTextNode(after));
-            
-            node.parentNode.replaceChild(fragment, node);
-          });
+            try {
+              range.surroundContents(mark);
+            } catch (e) {
+              // Fallback for complex ranges spanning multiple elements
+              const contents = range.extractContents();
+              mark.appendChild(contents);
+              range.insertNode(mark);
+            }
+          }
         }
         
         function escapeRegExp(string) {
-          return string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
         
         // Context menu for annotations
