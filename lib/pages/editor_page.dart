@@ -22,7 +22,7 @@ class _EditorPageState extends State<EditorPage> {
   final FileService _fileService = FileService();
   final HtmlService _htmlService = HtmlService();
   final AnnotationService _annotationService = AnnotationService();
-  late app_controller.WebViewController _webViewController;
+  late app_controller.AnnotiWebViewController _webViewController;
   final _webviewController = WebviewController();
 
   String? _currentFilePath;
@@ -41,7 +41,7 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void initState() {
     super.initState();
-    _webViewController = app_controller.WebViewController(
+    _webViewController = app_controller.AnnotiWebViewController(
       onTextSelected: _handleTextSelected,
       onAnnotationClicked: _handleAnnotationClicked,
     );

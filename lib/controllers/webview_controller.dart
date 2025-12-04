@@ -5,7 +5,7 @@ import '../models/annotation.dart';
 
 /// Controller for WebView management and JavaScript Bridge
 /// Uses CSS overlay-based highlighting instead of DOM manipulation
-class WebViewController {
+class AnnotiWebViewController {
   WebviewController? _webViewController;
   final Function(String text, String anchorId, int startOffset, int endOffset)?
       onTextSelected;
@@ -14,7 +14,7 @@ class WebViewController {
   // Highlighting mode: 'text' for text-only or 'box' for box selection
   String _highlightMode = 'box';
 
-  WebViewController({
+  AnnotiWebViewController({
     this.onTextSelected,
     this.onAnnotationClicked,
   });
