@@ -327,21 +327,6 @@ class _EditorPageState extends State<EditorPage> {
       ),
     );
   }
-                endOffset: endOffset,
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-                highlightType: _currentHighlightType, // Use current global highlight type
-              );
-
-              await _addAnnotation(annotation);
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('保存'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _addAnnotation(Annotation annotation) async {
     if (_currentFilePath == null) return;
@@ -662,7 +647,7 @@ class _EditorPageState extends State<EditorPage> {
           const Padding(
             padding: EdgeInsets.all(8),
             child: Text(
-              'Annotations',
+              '批注列表',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -709,7 +694,7 @@ class _EditorPageState extends State<EditorPage> {
           ),
           const SizedBox(width: 8),
           Text(
-            _isEditMode ? 'Edit Mode' : 'Read Mode',
+            _isEditMode ? '编辑模式' : '阅读模式',
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 16),
