@@ -12,18 +12,9 @@
 
 **系统要求：**
 - Windows 10/11
-- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (通常已预装)
+- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) （通常已预装）
 
-**Important: This application currently supports Windows desktop only**
-
-- ✅ **Windows Desktop** (Windows 10/11 recommended)
-- ❌ Web browsers (Not supported)
-- ❌ macOS / Linux (Not yet supported)
-
-**System Requirements:**
-- Windows 10/11
-- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually pre-installed)
-
+----
 
 目前：
 
@@ -32,16 +23,15 @@
 - SPAGHETTI
 
 
-
 目前暂时以[知之阅读](https://www.zhizhireader.com/)所能实现的功能为基本目标（本项目该项目没有任何的利益关系，仅作参照之用）。
 
-现在是用的MS Word满足我的需求，但MS Word的功能实在太多了，我希望它能专注于批注和阅读——看上去可编辑是不必要的。
+现在是用的MS Word满足我的需求，但MS Word的功能实在太多了，我希望它能专注于批注和阅读——看上去可编辑是不必要的。 
+
+-> 或许可以借鉴一些RTF的经验。
 
 看上去可以作为参照但是实际还没用过的：[Calibre](https://github.com/kovidgoyal/calibre)、[Bookxnote](http://www.bookxnote.com/)、[Sumatra](https://github.com/sumatrapdfreader/sumatrapdf)、[Koodo](https://github.com/koodo-reader/koodo-reader)。
 
 本来想做Windows Native的（因为自己平时也只用 Windows），考虑了WinUI3、JavaFX、JavaSwing和Electron架构之后，最后选择了性能更好的Tauri，没准也能做跨平台。
-
-
 
 个人认为的比较核心的需求：
 
