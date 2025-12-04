@@ -42,8 +42,7 @@ class AnnotiWebViewController {
   }
 
   /// Inject JavaScript to highlight an annotation
-  /// Text mode: DOM manipulation with mark tags (works with formatted text)
-  /// Box mode: CSS overlays (works on any position)
+  /// Each annotation has its own highlightType ('text' or 'box')
   Future<void> highlightAnnotation(Annotation annotation) async {
     if (_webViewController == null) return;
 
@@ -53,9 +52,9 @@ class AnnotiWebViewController {
         const anchorId = '${annotation.anchorId}';
         const annotationId = '${annotation.id}';
         const text = ${_escapeJsString(annotation.selectedText)};
-        const mode = window.annotationHighlightMode || 'box';
+        const highlightType = '${annotation.highlightType}';
         
-        if (mode === 'text') {
+        if (highlightType === 'text') {
           // Text mode: traverse DOM and wrap text nodes with <mark> tags
           highlightTextInDOM(anchorId, annotationId, text);
         } else {
@@ -188,6 +187,14 @@ class AnnotiWebViewController {
         overlayContainer.id = 'annotation-overlay-container';
         overlayContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;';
         document.body.appendChild(overlayContainer);
+        
+        // Add window resize listener to recalculate positions
+        if (!window.annotationResizeListener) {
+          window.annotationResizeListener = function() {
+            recalculateAllOverlays();
+          };
+          window.addEventListener('resize', window.annotationResizeListener);
+        }
       }
       
       // Remove existing overlays
@@ -202,6 +209,8 @@ class AnnotiWebViewController {
       const overlay = document.createElement('div');
       overlay.className = 'annotation-overlay annotation-overlay-box';
       overlay.setAttribute('data-annotation-id', annotationId);
+      overlay.setAttribute('data-range-text', text);
+      overlay.setAttribute('data-anchor-id', anchorId);
       overlay.style.cssText = 
         'position: absolute;' +
         'left: ' + (boundingRect.left + scrollLeft) + 'px;' +
@@ -217,11 +226,42 @@ class AnnotiWebViewController {
         notifyAnnotationClick(annotationId);
       });
       
-      // Listen for window resize to recalculate position
-      overlay.setAttribute('data-range-text', text);
-      overlay.setAttribute('data-anchor-id', anchorId);
-      
       overlayContainer.appendChild(overlay);
+    }
+    
+    // Recalculate all overlay positions on window resize
+    function recalculateAllOverlays() {
+      const overlayContainer = document.getElementById('annotation-overlay-container');
+      if (!overlayContainer) return;
+      
+      const body = document.querySelector('.markdown-body');
+      if (!body) return;
+      
+      const overlays = overlayContainer.querySelectorAll('.annotation-overlay-box');
+      overlays.forEach(overlay => {
+        const annotationId = overlay.getAttribute('data-annotation-id');
+        const anchorId = overlay.getAttribute('data-anchor-id');
+        const text = overlay.getAttribute('data-range-text');
+        
+        if (!anchorId || !text) return;
+        
+        // Find the range again
+        let range = findTextByAnchor(anchorId, body);
+        if (!range) {
+          range = findTextInElement(body, text);
+        }
+        if (!range) return;
+        
+        // Recalculate position
+        const boundingRect = range.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        
+        overlay.style.left = (boundingRect.left + scrollLeft) + 'px';
+        overlay.style.top = (boundingRect.top + scrollTop) + 'px';
+        overlay.style.width = boundingRect.width + 'px';
+        overlay.style.height = boundingRect.height + 'px';
+      });
     }
     
     function findTextByAnchor(anchorId, body) {

@@ -9,6 +9,7 @@ class Annotation {
   final int endOffset;
   final DateTime createdAt;
   DateTime updatedAt;
+  final String highlightType; // 'text' or 'box'
 
   Annotation({
     required this.id,
@@ -19,6 +20,7 @@ class Annotation {
     required this.endOffset,
     required this.createdAt,
     required this.updatedAt,
+    this.highlightType = 'text', // Default to text highlighting
   });
 
   Map<String, dynamic> toJson() {
@@ -31,6 +33,7 @@ class Annotation {
       'endOffset': endOffset,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'highlightType': highlightType,
     };
   }
 
@@ -44,6 +47,7 @@ class Annotation {
       endOffset: json['endOffset'] as int,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      highlightType: json['highlightType'] as String? ?? 'text',
     );
   }
 
@@ -56,6 +60,7 @@ class Annotation {
     int? endOffset,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? highlightType,
   }) {
     return Annotation(
       id: id ?? this.id,
@@ -66,6 +71,7 @@ class Annotation {
       endOffset: endOffset ?? this.endOffset,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      highlightType: highlightType ?? this.highlightType,
     );
   }
 
