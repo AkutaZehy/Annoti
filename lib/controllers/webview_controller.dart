@@ -97,53 +97,34 @@ class AnnotiWebViewController {
       
       // Extract contents and wrap each text node
       try {
-        // Get all nodes between start and end (including complex elements)
-        function getAllNodesBetween(startNode, endNode) {
-          const nodes = [];
-          let current = startNode;
-          let endReached = false;
+        // Get all text nodes within the range using proper DOM traversal
+        function getTextNodesInRange(range) {
+          const textNodes = [];
+          const walker = document.createTreeWalker(
+            range.commonAncestorContainer,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+          );
           
-          function traverse(node) {
-            if (endReached || !node) return;
+          let node;
+          while (node = walker.nextNode()) {
+            // Check if this text node is within the range
+            const nodeRange = document.createRange();
+            nodeRange.selectNodeContents(node);
             
-            if (node === endNode) {
-              endReached = true;
-              nodes.push(node);
-              return;
-            }
-            
-            nodes.push(node);
-            
-            // Traverse children
-            if (node.firstChild) {
-              traverse(node.firstChild);
-            }
-            
-            // Traverse siblings
-            if (!endReached && node.nextSibling) {
-              traverse(node.nextSibling);
-            }
-            
-            // Go back up and try parent's next sibling
-            if (!endReached && node.parentNode && node.parentNode !== body) {
-              let parent = node.parentNode;
-              while (parent && parent !== body && !endReached) {
-                if (parent.nextSibling) {
-                  traverse(parent.nextSibling);
-                  break;
-                }
-                parent = parent.parentNode;
-              }
+            // Check if ranges intersect
+            if (range.compareBoundaryPoints(Range.START_TO_END, nodeRange) > 0 &&
+                range.compareBoundaryPoints(Range.END_TO_START, nodeRange) < 0) {
+              textNodes.push(node);
             }
           }
           
-          traverse(startNode);
-          return nodes;
+          return textNodes;
         }
         
-        // Find all text nodes in selection
-        const allNodes = getAllNodesBetween(range.startContainer, range.endContainer);
-        const textNodes = allNodes.filter(node => node.nodeType === Node.TEXT_NODE);
+        // Find all text nodes within the selection range
+        const textNodes = getTextNodesInRange(range);
         
         // Process each text node
         for (let i = 0; i < textNodes.length; i++) {
@@ -154,13 +135,30 @@ class AnnotiWebViewController {
           let startOffset = 0;
           let endOffset = textNode.length;
           
-          // First node: start from range.startOffset
+          // For the first text node, check if it's the range's start container
           if (textNode === range.startContainer) {
             startOffset = range.startOffset;
+          } else {
+            // Check if this node comes after range start
+            const tempRange = document.createRange();
+            tempRange.selectNodeContents(textNode);
+            if (range.compareBoundaryPoints(Range.START_TO_START, tempRange) < 0) {
+              // Range starts before this node, include from beginning
+              startOffset = 0;
+            }
           }
-          // Last node: end at range.endOffset
+          
+          // For the last text node, check if it's the range's end container
           if (textNode === range.endContainer) {
             endOffset = range.endOffset;
+          } else {
+            // Check if this node comes before range end
+            const tempRange = document.createRange();
+            tempRange.selectNodeContents(textNode);
+            if (range.compareBoundaryPoints(Range.END_TO_END, tempRange) > 0) {
+              // Range ends after this node, include to end
+              endOffset = textNode.length;
+            }
           }
           
           // Skip if no content to wrap
