@@ -44,7 +44,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
   // Max size constrained by screen and sidebar areas
   double get _maxWidth {
     final screenWidth = MediaQuery.of(context).size.width;
-    return screenWidth - _sidebarWidth - _annotationListWidth - (_margin * 2);
+    return screenWidth - _annotationListWidth - (_margin * 2);
   }
   
   double get _maxHeight {
@@ -80,9 +80,9 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
   // Constrain position to stay within screen bounds (excluding sidebars)
   Offset _constrainPosition(Offset newPosition, Size noteSize) {
     final screenSize = MediaQuery.of(context).size;
-    // Left bound: after left sidebar
-    final minX = _sidebarWidth;
-    // Right bound: before annotation list
+    // Left bound: start from 0 (left sidebar is separate)
+    final minX = 0.0;
+    // Right bound: before annotation list, accounting for note width
     final maxX = screenSize.width - _annotationListWidth - noteSize.width;
     // Top bound
     final minY = 0.0;
@@ -90,8 +90,8 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
     final maxY = screenSize.height - noteSize.height;
     
     return Offset(
-      newPosition.dx.clamp(minX, maxX.clamp(minX, screenSize.width - noteSize.width)),
-      newPosition.dy.clamp(minY, maxY.clamp(0.0, screenSize.height - noteSize.height)),
+      newPosition.dx.clamp(minX, maxX > minX ? maxX : minX),
+      newPosition.dy.clamp(minY, maxY > minY ? maxY : minY),
     );
   }
   
