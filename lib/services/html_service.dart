@@ -246,9 +246,20 @@ body {
   /// JavaScript for text selection and annotation interaction
   String _getSelectionScript() {
     return '''
-// Send selection to Flutter
+// Current highlight mode: 'text' or 'box'
+window.annotationHighlightMode = 'text';
+
+// Box drawing mode variables
+let isDrawing = false;
+let startX, startY;
+let drawingBox = null;
+
+// Send selection to Flutter (text mode)
 function sendSelection() {
   try {
+    // Only for text mode
+    if (window.annotationHighlightMode !== 'text') return;
+    
     const selection = window.getSelection();
     if (selection.toString().length > 0) {
       const range = selection.getRangeAt(0);
@@ -266,6 +277,82 @@ function sendSelection() {
     }
   } catch (error) {
     console.error('Error sending selection:', error);
+  }
+}
+
+// Box drawing functions
+function startBoxDrawing(e) {
+  if (window.annotationHighlightMode !== 'box') return;
+  
+  isDrawing = true;
+  const rect = document.querySelector('.markdown-body').getBoundingClientRect();
+  startX = e.clientX - rect.left + window.scrollX;
+  startY = e.clientY - rect.top + window.scrollY;
+  
+  // Create visual drawing box
+  drawingBox = document.createElement('div');
+  drawingBox.style.cssText = 
+    'position: absolute;' +
+    'border: 2px dashed #ffc107;' +
+    'background-color: rgba(255, 243, 205, 0.3);' +
+    'pointer-events: none;' +
+    'z-index: 9999;';
+  document.body.appendChild(drawingBox);
+  
+  e.preventDefault();
+}
+
+function updateBoxDrawing(e) {
+  if (!isDrawing || !drawingBox) return;
+  
+  const rect = document.querySelector('.markdown-body').getBoundingClientRect();
+  const currentX = e.clientX - rect.left + window.scrollX;
+  const currentY = e.clientY - rect.top + window.scrollY;
+  
+  const left = Math.min(startX, currentX);
+  const top = Math.min(startY, currentY);
+  const width = Math.abs(currentX - startX);
+  const height = Math.abs(currentY - startY);
+  
+  drawingBox.style.left = (rect.left + left) + 'px';
+  drawingBox.style.top = (rect.top + top) + 'px';
+  drawingBox.style.width = width + 'px';
+  drawingBox.style.height = height + 'px';
+}
+
+function endBoxDrawing(e) {
+  if (!isDrawing || !drawingBox) return;
+  
+  isDrawing = false;
+  
+  const rect = document.querySelector('.markdown-body').getBoundingClientRect();
+  const currentX = e.clientX - rect.left + window.scrollX;
+  const currentY = e.clientY - rect.top + window.scrollY;
+  
+  const left = Math.min(startX, currentX);
+  const top = Math.min(startY, currentY);
+  const width = Math.abs(currentX - startX);
+  const height = Math.abs(currentY - startY);
+  
+  // Remove visual box
+  drawingBox.remove();
+  drawingBox = null;
+  
+  // Only send if box has meaningful size
+  if (width > 10 && height > 10) {
+    const data = {
+      handler: 'onBoxDrawn',
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      anchorId: 'box_' + Date.now(),
+      text: '' // No text for box annotations
+    };
+    
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage(JSON.stringify(data));
+    }
   }
 }
 
@@ -298,9 +385,14 @@ function highlightAnnotation(anchorId, annotationId) {
   console.log('Highlighting annotation:', anchorId, annotationId);
 }
 
-// Add event listener for text selection
+// Add event listeners
 document.addEventListener('mouseup', sendSelection);
 document.addEventListener('touchend', sendSelection);
+
+// Box drawing listeners
+document.querySelector('.markdown-body').addEventListener('mousedown', startBoxDrawing);
+document.addEventListener('mousemove', updateBoxDrawing);
+document.addEventListener('mouseup', endBoxDrawing);
 
 // Handle annotation clicks
 document.addEventListener('click', function(e) {

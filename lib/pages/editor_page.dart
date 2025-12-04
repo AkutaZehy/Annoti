@@ -43,6 +43,7 @@ class _EditorPageState extends State<EditorPage> {
     super.initState();
     _webViewController = app_controller.AnnotiWebViewController(
       onTextSelected: _handleTextSelected,
+      onBoxDrawn: _handleBoxDrawn,
       onAnnotationClicked: _handleAnnotationClicked,
     );
     _initWebView();
@@ -65,6 +66,14 @@ class _EditorPageState extends State<EditorPage> {
               jsonData['anchorId'] as String,
               jsonData['startOffset'] as int,
               jsonData['endOffset'] as int,
+            );
+          } else if (handler == 'onBoxDrawn') {
+            _handleBoxDrawn(
+              (jsonData['left'] as num).toDouble(),
+              (jsonData['top'] as num).toDouble(),
+              (jsonData['width'] as num).toDouble(),
+              (jsonData['height'] as num).toDouble(),
+              jsonData['anchorId'] as String,
             );
           } else if (handler == 'onAnnotationClicked') {
             _handleAnnotationClicked(jsonData['annotationId'] as String);
@@ -133,6 +142,13 @@ class _EditorPageState extends State<EditorPage> {
     if (!_isEditMode) return; // Only allow selection in edit mode
 
     _showCreateAnnotationDialog(text, anchorId, startOffset, endOffset);
+  }
+
+  void _handleBoxDrawn(double left, double top, double width, double height, String anchorId) {
+    if (!_isEditMode) return; // Only allow in edit mode
+
+    // For box annotations, we don't have selected text
+    _showCreateBoxAnnotationDialog(left, top, width, height, anchorId);
   }
 
   void _handleAnnotationClicked(String annotationId) {
@@ -217,6 +233,100 @@ class _EditorPageState extends State<EditorPage> {
                 note: noteController.text,
                 anchorId: anchorId,
                 startOffset: startOffset,
+                endOffset: endOffset,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+                highlightType: _currentHighlightType, // Use current global highlight type
+              );
+
+              await _addAnnotation(annotation);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateBoxAnnotationDialog(double left, double top, double width, double height, String anchorId) {
+    final noteController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('创建批注'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('框选区域:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '位置: (${left.toStringAsFixed(0)}, ${top.toStringAsFixed(0)})\n'
+                  '大小: ${width.toStringAsFixed(0)} x ${height.toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('批注内容:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: noteController,
+                maxLines: 5,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: '在此输入批注内容...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Store box coordinates in anchorId as JSON
+              final boxData = jsonEncode({
+                'left': left,
+                'top': top,
+                'width': width,
+                'height': height,
+              });
+              
+              final annotation = Annotation(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                selectedText: '', // No text for box annotations
+                note: noteController.text,
+                anchorId: 'box:$boxData',
+                startOffset: 0,
+                endOffset: 0,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+                highlightType: 'box',
+              );
+
+              await _addAnnotation(annotation);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
                 endOffset: endOffset,
                 createdAt: DateTime.now(),
                 updatedAt: DateTime.now(),
@@ -435,7 +545,7 @@ class _EditorPageState extends State<EditorPage> {
               message: _currentHighlightType == 'text' ? '切换到框选高亮' : '切换到文本高亮',
               child: IconButton(
                 icon: Icon(
-                  _currentHighlightType == 'text' ? Icons.text_fields : Icons.check_box_outlined,
+                  _currentHighlightType == 'text' ? Icons.text_format : Icons.check_box_outline_blank,
                   color: _currentHighlightType == 'text' ? Colors.orange : Colors.blue,
                 ),
                 onPressed: () {

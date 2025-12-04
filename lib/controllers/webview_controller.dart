@@ -9,6 +9,8 @@ class AnnotiWebViewController {
   WebviewController? _webViewController;
   final Function(String text, String anchorId, int startOffset, int endOffset)?
       onTextSelected;
+  final Function(double left, double top, double width, double height, String anchorId)?
+      onBoxDrawn;
   final Function(String annotationId)? onAnnotationClicked;
   
   // Highlighting mode: 'text' for text-only or 'box' for box selection
@@ -16,6 +18,7 @@ class AnnotiWebViewController {
 
   AnnotiWebViewController({
     this.onTextSelected,
+    this.onBoxDrawn,
     this.onAnnotationClicked,
   });
 
@@ -94,29 +97,53 @@ class AnnotiWebViewController {
       
       // Extract contents and wrap each text node
       try {
-        // Clone the range to preserve it
-        const workRange = range.cloneRange();
-        
-        // Get all text nodes in the range
-        const textNodes = [];
-        const walker = document.createTreeWalker(
-          range.commonAncestorContainer,
-          NodeFilter.SHOW_TEXT,
-          {
-            acceptNode: function(node) {
-              if (workRange.intersectsNode(node)) {
-                return NodeFilter.FILTER_ACCEPT;
-              }
-              return NodeFilter.FILTER_REJECT;
+        // Get all nodes between start and end (including complex elements)
+        function getAllNodesBetween(startNode, endNode) {
+          const nodes = [];
+          let current = startNode;
+          let endReached = false;
+          
+          function traverse(node) {
+            if (endReached || !node) return;
+            
+            if (node === endNode) {
+              endReached = true;
+              nodes.push(node);
+              return;
             }
-          },
-          false
-        );
-        
-        let node;
-        while (node = walker.nextNode()) {
-          textNodes.push(node);
+            
+            nodes.push(node);
+            
+            // Traverse children
+            if (node.firstChild) {
+              traverse(node.firstChild);
+            }
+            
+            // Traverse siblings
+            if (!endReached && node.nextSibling) {
+              traverse(node.nextSibling);
+            }
+            
+            // Go back up and try parent's next sibling
+            if (!endReached && node.parentNode && node.parentNode !== body) {
+              let parent = node.parentNode;
+              while (parent && parent !== body && !endReached) {
+                if (parent.nextSibling) {
+                  traverse(parent.nextSibling);
+                  break;
+                }
+                parent = parent.parentNode;
+              }
+            }
+          }
+          
+          traverse(startNode);
+          return nodes;
         }
+        
+        // Find all text nodes in selection
+        const allNodes = getAllNodesBetween(range.startContainer, range.endContainer);
+        const textNodes = allNodes.filter(node => node.nodeType === Node.TEXT_NODE);
         
         // Process each text node
         for (let i = 0; i < textNodes.length; i++) {
@@ -127,19 +154,21 @@ class AnnotiWebViewController {
           let startOffset = 0;
           let endOffset = textNode.length;
           
-          if (i === 0 && range.startContainer === textNode) {
+          // First node: start from range.startOffset
+          if (textNode === range.startContainer) {
             startOffset = range.startOffset;
           }
-          if (i === textNodes.length - 1 && range.endContainer === textNode) {
+          // Last node: end at range.endOffset
+          if (textNode === range.endContainer) {
             endOffset = range.endOffset;
           }
           
           // Skip if no content to wrap
-          if (startOffset >= endOffset) continue;
+          if (startOffset >= endOffset || startOffset >= textNode.length) continue;
           
           // Create range for this portion
           nodeRange.setStart(textNode, startOffset);
-          nodeRange.setEnd(textNode, endOffset);
+          nodeRange.setEnd(textNode, Math.min(endOffset, textNode.length));
           
           // Create mark element
           const mark = document.createElement('mark');
@@ -170,16 +199,6 @@ class AnnotiWebViewController {
       const body = document.querySelector('.markdown-body');
       if (!body) return;
       
-      // Find the range
-      let range = findTextByAnchor(anchorId, body);
-      if (!range) {
-        range = findTextInElement(body, text);
-      }
-      if (!range) {
-        console.error('Could not find text to highlight');
-        return;
-      }
-      
       // Create overlay container if needed
       let overlayContainer = document.getElementById('annotation-overlay-container');
       if (!overlayContainer) {
@@ -201,9 +220,62 @@ class AnnotiWebViewController {
       const existing = overlayContainer.querySelectorAll('[data-annotation-id="' + annotationId + '"]');
       existing.forEach(el => el.remove());
       
-      // Create box overlay
-      const boundingRect = range.getBoundingClientRect();
+      // Check if this is a box annotation (anchorId starts with 'box:')
+      let boundingRect;
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      const bodyRect = body.getBoundingClientRect();
+      
+      if (anchorId.startsWith('box:')) {
+        // Box annotation - extract coordinates from anchorId
+        try {
+          const boxDataStr = anchorId.substring(4); // Remove 'box:' prefix
+          const boxData = JSON.parse(boxDataStr);
+          boundingRect = {
+            left: boxData.left + bodyRect.left,
+            top: boxData.top + bodyRect.top,
+            width: boxData.width,
+            height: boxData.height
+          };
+        } catch (e) {
+          console.error('Error parsing box data:', e);
+          return;
+        }
+      } else {
+        // Text-based box annotation - find the range
+        let range = findTextByAnchor(anchorId, body);
+        if (!range) {
+          range = findTextInElement(body, text);
+        }
+        if (!range) {
+          console.error('Could not find text to highlight');
+          return;
+        }
+        boundingRect = range.getBoundingClientRect();
+      }
+      
+      // Create box overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'annotation-overlay annotation-overlay-box';
+      overlay.setAttribute('data-annotation-id', annotationId);
+      overlay.setAttribute('data-anchor-id', anchorId);
+      overlay.style.cssText = 
+        'position: absolute;' +
+        'left: ' + (boundingRect.left + scrollLeft) + 'px;' +
+        'top: ' + (boundingRect.top + scrollTop) + 'px;' +
+        'width: ' + boundingRect.width + 'px;' +
+        'height: ' + boundingRect.height + 'px;' +
+        'background-color: rgba(255, 243, 205, 1);' +
+        'border: 2px solid #ffc107;' +
+        'pointer-events: auto;' +
+        'cursor: pointer;';
+      
+      overlay.addEventListener('click', function() {
+        notifyAnnotationClick(annotationId);
+      });
+      
+      overlayContainer.appendChild(overlay);
+    }
       const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
       
       const overlay = document.createElement('div');

@@ -83,11 +83,11 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
     // Left bound: start from 0 (left sidebar is separate)
     final minX = 0.0;
     // Right bound: before annotation list, accounting for note width
-    final maxX = screenSize.width - _annotationListWidth - noteSize.width;
+    final maxX = (screenSize.width - _annotationListWidth - noteSize.width).clamp(0.0, double.infinity);
     // Top bound
     final minY = 0.0;
-    // Bottom bound
-    final maxY = screenSize.height - noteSize.height;
+    // Bottom bound  
+    final maxY = (screenSize.height - noteSize.height).clamp(0.0, double.infinity);
     
     return Offset(
       newPosition.dx.clamp(minX, maxX > minX ? maxX : minX),
