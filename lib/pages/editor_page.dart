@@ -36,6 +36,7 @@ class _EditorPageState extends State<EditorPage> {
   Offset _stickyNotePosition = const Offset(500, 100); // Default position more to the right
   bool _isWebViewReady = false;
   String? _webViewError;
+  String _currentHighlightType = 'text'; // Current highlight type for new annotations: 'text' or 'box'
 
   @override
   void initState() {
@@ -164,110 +165,70 @@ class _EditorPageState extends State<EditorPage> {
 
   void _showCreateAnnotationDialog(String text, String anchorId, int startOffset, int endOffset) {
     final noteController = TextEditingController();
-    String selectedHighlightType = 'text'; // Default to text highlighting
     
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('创建批注'),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('选中的文本:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    text,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+      builder: (context) => AlertDialog(
+        title: const Text('创建批注'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('选中的文本:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                const SizedBox(height: 16),
-                const Text('高亮类型:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: RadioListTile<String>(
-                        title: const Text('文本高亮'),
-                        subtitle: const Text('下划线标记文本', style: TextStyle(fontSize: 11)),
-                        value: 'text',
-                        groupValue: selectedHighlightType,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedHighlightType = value!;
-                          });
-                        },
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    Expanded(
-                      child: RadioListTile<String>(
-                        title: const Text('框选高亮'),
-                        subtitle: const Text('矩形框标记', style: TextStyle(fontSize: 11)),
-                        value: 'box',
-                        groupValue: selectedHighlightType,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedHighlightType = value!;
-                          });
-                        },
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  text,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 16),
-                const Text('批注内容:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: noteController,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    hintText: '在此输入批注内容...',
-                    border: OutlineInputBorder(),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              const Text('批注内容:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: noteController,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  hintText: '在此输入批注内容...',
+                  border: OutlineInputBorder(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final annotation = Annotation(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  selectedText: text,
-                  note: noteController.text,
-                  anchorId: anchorId,
-                  startOffset: startOffset,
-                  endOffset: endOffset,
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                  highlightType: selectedHighlightType,
-                );
-
-                await _addAnnotation(annotation);
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('保存'),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final annotation = Annotation(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                selectedText: text,
+                note: noteController.text,
+                anchorId: anchorId,
+                startOffset: startOffset,
+                endOffset: endOffset,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+                highlightType: _currentHighlightType, // Use current global highlight type
+              );
+
+              await _addAnnotation(annotation);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('保存'),
+          ),
+        ],
       ),
     );
   }
@@ -468,6 +429,26 @@ class _EditorPageState extends State<EditorPage> {
             tooltip: '打开文件',
             onPressed: _openFile,
           ),
+          if (_isEditMode) ...[
+            const SizedBox(height: 16),
+            Tooltip(
+              message: _currentHighlightType == 'text' ? '切换到框选高亮' : '切换到文本高亮',
+              child: IconButton(
+                icon: Icon(
+                  _currentHighlightType == 'text' ? Icons.text_fields : Icons.check_box_outlined,
+                  color: _currentHighlightType == 'text' ? Colors.orange : Colors.blue,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _currentHighlightType = _currentHighlightType == 'text' ? 'box' : 'text';
+                    _statusMessage = _currentHighlightType == 'text' 
+                        ? '当前模式：文本高亮'
+                        : '当前模式：框选高亮';
+                  });
+                },
+              ),
+            ),
+          ],
           if (_isEditMode && _isMultiSelectMode) ...[
             const SizedBox(height: 16),
             IconButton(
