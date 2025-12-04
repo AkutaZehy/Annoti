@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_selector/file_selector.dart';
-import 'widgets/annotated_markdown_viewer.dart';
+import 'widgets/webview_markdown_viewer.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -90,23 +90,18 @@ class _MyHomePageState extends State<MyHomePage> {
   final List<Annotation> _annotations = [];
   String _statusMessage = '请打开一个 Markdown 文件。';
 
-  bool _isAnnotationMode = false;
-  int? _selectionStartIndex;
-  int? _selectionEndIndex;
-
   bool _isMultiSelectMode = false;
   final Set<Annotation> _selectedAnnotations = {};
 
-  int? _activeLine;
   int? _expandedAnnotationIndex;
 
-  final GlobalKey<AnnotatedMarkdownViewerState> _viewerKey =
-      GlobalKey<AnnotatedMarkdownViewerState>();
+  final GlobalKey<WebViewMarkdownViewerState> _viewerKey =
+      GlobalKey<WebViewMarkdownViewerState>();
 
   Future<void> _openMarkdownFile() async {
     const XTypeGroup typeGroup = XTypeGroup(
       label: 'markdown',
-      extensions: <String>['md'],
+      extensions: <String>['md', 'txt'],
     );
     final XFile? file = await openFile(
       acceptedTypeGroups: <XTypeGroup>[typeGroup],
@@ -120,10 +115,6 @@ class _MyHomePageState extends State<MyHomePage> {
           _filePath = file.path;
           _fileName = file.name;
           _annotations.clear();
-          _isAnnotationMode = false;
-          _selectionStartIndex = null;
-          _selectionEndIndex = null;
-          _activeLine = null;
           _statusMessage = '文件已成功打开。';
         });
         await _loadAnnotations();
@@ -217,36 +208,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _onTextSelectionChanged(TextSelection textSelection) {
-    setState(() {
-      if (textSelection.baseOffset != textSelection.extentOffset) {
-        _selectionStartIndex = textSelection.baseOffset;
-        _selectionEndIndex = textSelection.extentOffset;
-      } else {
-        _selectionStartIndex = null;
-        _selectionEndIndex = null;
-      }
-    });
-  }
-
-  void _saveAnnotationFromSelection() {
-    if (_selectionStartIndex == null ||
-        _selectionEndIndex == null ||
-        _fileContent == null) {
-      return;
-    }
-    final int start = _selectionStartIndex! < _selectionEndIndex!
-        ? _selectionStartIndex!
-        : _selectionEndIndex!;
-    final int end = _selectionStartIndex! > _selectionEndIndex!
-        ? _selectionStartIndex!
-        : _selectionEndIndex!;
-
-    if (start != end) {
-      final selectedText = _fileContent!.substring(start, end);
-      final lineNumber = _getLineNumber(start);
-      _showCreateAnnotationDialog(selectedText, start, end, lineNumber);
-    }
+  void _onAnnotationCreate(String text, int startOffset, int endOffset) {
+    final lineNumber = _getLineNumber(startOffset);
+    _showCreateAnnotationDialog(text, startOffset, endOffset, lineNumber);
   }
 
   void _showCreateAnnotationDialog(
@@ -356,20 +320,12 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_fileContent == null) return 1;
     final content = _fileContent!;
     int lineNumber = 1;
-    for (int i = 0; i < textIndex; i++) {
+    for (int i = 0; i < textIndex && i < content.length; i++) {
       if (content[i] == '\n') {
         lineNumber++;
       }
     }
     return lineNumber;
-  }
-
-  void _scrollToLine(int lineNumber) {
-    _viewerKey.currentState?.scrollToLine(lineNumber);
-    setState(() {
-      _activeLine = _isAnnotationMode ? null : lineNumber;
-      _statusMessage = '正在滚动到行号: $lineNumber。';
-    });
   }
 
   void _handleKeyEvent(RawKeyEvent event) {
@@ -412,29 +368,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       onPressed: _openMarkdownFile,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Tooltip(
-                    message: _isAnnotationMode ? '切换到预览模式' : '切换到批注模式',
-                    child: IconButton(
-                      icon: const Icon(Icons.swap_horiz),
-                      onPressed: () {
-                        setState(() {
-                          _isAnnotationMode = !_isAnnotationMode;
-                          _selectedAnnotations.clear();
-                          _isMultiSelectMode = false;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  if (_isAnnotationMode)
-                    Tooltip(
-                      message: '创建批注',
-                      child: IconButton(
-                        icon: const Icon(Icons.add_comment),
-                        onPressed: _saveAnnotationFromSelection,
-                      ),
-                    ),
                   const Spacer(),
                   Tooltip(
                     message: '保存批注',
@@ -444,54 +377,53 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  if (_isAnnotationMode)
-                    Tooltip(
-                      message: _isMultiSelectMode ? '删除选中的批注' : '选择要删除的批注',
-                      child: Stack(
-                        alignment: Alignment.topRight,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              _isMultiSelectMode
-                                  ? Icons.delete_forever
-                                  : Icons.delete_outline,
-                              color: Colors.red,
-                            ),
-                            onPressed: _isMultiSelectMode
-                                ? _deleteSelectedAnnotations
-                                : () {
-                                    setState(() {
-                                      _isMultiSelectMode = true;
-                                    });
-                                  },
+                  Tooltip(
+                    message: _isMultiSelectMode ? '删除选中的批注' : '选择要删除的批注',
+                    child: Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _isMultiSelectMode
+                                ? Icons.delete_forever
+                                : Icons.delete_outline,
+                            color: Colors.red,
                           ),
-                          if (_isMultiSelectMode &&
-                              _selectedAnnotations.isNotEmpty)
-                            Positioned(
-                              right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(10),
+                          onPressed: _isMultiSelectMode
+                              ? _deleteSelectedAnnotations
+                              : () {
+                                  setState(() {
+                                    _isMultiSelectMode = true;
+                                  });
+                                },
+                        ),
+                        if (_isMultiSelectMode &&
+                            _selectedAnnotations.isNotEmpty)
+                          Positioned(
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                '${_selectedAnnotations.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
                                 ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Text(
-                                  '${_selectedAnnotations.length}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
+                  ),
                   if (_isMultiSelectMode)
                     Tooltip(
                       message: '取消多选',
@@ -513,15 +445,13 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Container(
                 padding: const EdgeInsets.all(16.0),
                 child: _fileContent != null
-                    ? AnnotatedMarkdownViewer(
+                    ? WebViewMarkdownViewer(
                         key: _viewerKey,
                         markdownContent: _fileContent!,
                         annotations: _annotations,
-                        isAnnotationMode: _isAnnotationMode,
-                        onSelectionChanged: _onTextSelectionChanged,
-                        activeLine: _activeLine,
+                        onAnnotationCreate: _onAnnotationCreate,
                       )
-                    : const Center(child: Text('请在左侧点击按钮选择一个 .md 文件。')),
+                    : const Center(child: Text('请在左侧点击按钮选择一个 .md 或 .txt 文件。')),
               ),
             ),
             Expanded(
@@ -568,7 +498,6 @@ class _MyHomePageState extends State<MyHomePage> {
                                     _expandedAnnotationIndex = index;
                                   }
                                 });
-                                _scrollToLine(annotation.lineNumber);
                               }
                             },
                             onEdit: _isMultiSelectMode
