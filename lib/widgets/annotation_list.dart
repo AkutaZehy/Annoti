@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/annotation.dart';
+import '../utils/date_formatter.dart';
 
 /// Sidebar widget displaying list of annotations
 class AnnotationList extends StatelessWidget {
@@ -63,7 +64,7 @@ class AnnotationList extends StatelessWidget {
             ),
             subtitle: Text(
               annotation.note.isEmpty 
-                  ? _formatDateTime(annotation.createdAt)
+                  ? DateFormatter.formatShortDateTime(annotation.createdAt)
                   : annotation.note,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -120,9 +121,5 @@ class AnnotationList extends StatelessWidget {
         );
       },
     );
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.month}/${dateTime.day} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

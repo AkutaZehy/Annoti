@@ -32,6 +32,8 @@ class WebViewController {
   }
 
   /// Inject JavaScript to highlight an annotation
+  /// Note: Current implementation highlights first occurrence of text
+  /// TODO: Improve to use actual anchor positioning for precise highlighting
   Future<void> highlightAnnotation(Annotation annotation) async {
     if (_webViewController == null) return;
 

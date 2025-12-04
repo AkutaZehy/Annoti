@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/annotation.dart';
+import '../utils/date_formatter.dart';
 
 /// Floating sticky note widget for displaying annotations
 /// White background, can overlay content
@@ -155,7 +156,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                       const SizedBox(height: 8),
                       // Timestamp
                       Text(
-                        'Created: ${_formatDateTime(widget.annotation.createdAt)}',
+                        'Created: ${DateFormatter.formatDateTime(widget.annotation.createdAt)}',
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.grey.shade600,
@@ -163,7 +164,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                       ),
                       if (widget.annotation.updatedAt != widget.annotation.createdAt)
                         Text(
-                          'Updated: ${_formatDateTime(widget.annotation.updatedAt)}',
+                          'Updated: ${DateFormatter.formatDateTime(widget.annotation.updatedAt)}',
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.grey.shade600,
@@ -211,10 +212,5 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
         ),
       ),
     );
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

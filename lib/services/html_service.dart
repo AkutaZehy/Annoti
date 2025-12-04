@@ -241,19 +241,23 @@ body {
     return '''
 // Send selection to Flutter
 function sendSelection() {
-  const selection = window.getSelection();
-  if (selection.toString().length > 0) {
-    const range = selection.getRangeAt(0);
-    const data = {
-      text: selection.toString(),
-      anchorId: generateAnchorId(range),
-      startOffset: range.startOffset,
-      endOffset: range.endOffset
-    };
-    
-    if (window.flutter_inappwebview) {
-      window.flutter_inappwebview.callHandler('onTextSelected', data);
+  try {
+    const selection = window.getSelection();
+    if (selection.toString().length > 0) {
+      const range = selection.getRangeAt(0);
+      const data = {
+        text: selection.toString(),
+        anchorId: generateAnchorId(range),
+        startOffset: range.startOffset,
+        endOffset: range.endOffset
+      };
+      
+      if (window.flutter_inappwebview) {
+        window.flutter_inappwebview.callHandler('onTextSelected', data);
+      }
     }
+  } catch (error) {
+    console.error('Error sending selection:', error);
   }
 }
 
@@ -267,7 +271,7 @@ function generateAnchorId(range) {
 // Get path to node from document root
 function getNodePath(node) {
   const path = [];
-  while (node && node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE) {
+  while (node && (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE)) {
     if (node.parentNode) {
       const siblings = Array.from(node.parentNode.childNodes);
       const index = siblings.indexOf(node);
@@ -292,11 +296,15 @@ document.addEventListener('touchend', sendSelection);
 
 // Handle annotation clicks
 document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('annotation-highlight')) {
-    const annotationId = e.target.getAttribute('data-annotation-id');
-    if (window.flutter_inappwebview && annotationId) {
-      window.flutter_inappwebview.callHandler('onAnnotationClicked', annotationId);
+  try {
+    if (e.target.classList.contains('annotation-highlight')) {
+      const annotationId = e.target.getAttribute('data-annotation-id');
+      if (window.flutter_inappwebview && annotationId) {
+        window.flutter_inappwebview.callHandler('onAnnotationClicked', annotationId);
+      }
     }
+  } catch (error) {
+    console.error('Error handling annotation click:', error);
   }
 });
 ''';

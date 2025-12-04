@@ -88,13 +88,25 @@ class _EditorPageState extends State<EditorPage> {
   void _handleAnnotationClicked(String annotationId) {
     final annotation = _annotations.firstWhere(
       (a) => a.id == annotationId,
-      orElse: () => _annotations.first,
+      orElse: () => Annotation(
+        id: '',
+        selectedText: '',
+        note: '',
+        anchorId: '',
+        startOffset: 0,
+        endOffset: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
     );
     
-    setState(() {
-      _activeAnnotation = annotation;
-      _stickyNotePosition = const Offset(100, 100);
-    });
+    // Only show if valid annotation found
+    if (annotation.id.isNotEmpty) {
+      setState(() {
+        _activeAnnotation = annotation;
+        _stickyNotePosition = const Offset(100, 100);
+      });
+    }
   }
 
   void _showCreateAnnotationDialog(String text, String anchorId, int startOffset, int endOffset) {
