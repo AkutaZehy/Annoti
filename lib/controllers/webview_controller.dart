@@ -107,17 +107,16 @@ class AnnotiWebViewController {
         const overlay = document.createElement('div');
         overlay.className = 'annotation-overlay annotation-overlay-box';
         overlay.setAttribute('data-annotation-id', annotationId);
-        overlay.style.cssText = `
-          position: absolute;
-          left: ${boundingRect.left + scrollLeft}px;
-          top: ${boundingRect.top + scrollTop}px;
-          width: ${boundingRect.width}px;
-          height: ${boundingRect.height}px;
-          background-color: rgba(255, 243, 205, 0.5);
-          border: 2px solid #ffc107;
-          pointer-events: auto;
-          cursor: pointer;
-        `;
+        overlay.style.cssText = 
+          'position: absolute;' +
+          'left: ' + (boundingRect.left + scrollLeft) + 'px;' +
+          'top: ' + (boundingRect.top + scrollTop) + 'px;' +
+          'width: ' + boundingRect.width + 'px;' +
+          'height: ' + boundingRect.height + 'px;' +
+          'background-color: rgba(255, 243, 205, 0.5);' +
+          'border: 2px solid #ffc107;' +
+          'pointer-events: auto;' +
+          'cursor: pointer;';
         
         overlay.addEventListener('click', function() {
           notifyAnnotationClick(annotationId);
@@ -138,17 +137,16 @@ class AnnotiWebViewController {
           // Store rect info for scrolling to center calculation
           overlay.setAttribute('data-rect-index', i);
           overlay.setAttribute('data-rect-count', rects.length);
-          overlay.style.cssText = `
-            position: absolute;
-            left: ${rect.left + scrollLeft}px;
-            top: ${rect.top + scrollTop}px;
-            width: ${rect.width}px;
-            height: ${rect.height}px;
-            background-color: rgba(255, 243, 205, 0.6);
-            border-bottom: 2px solid #ffc107;
-            pointer-events: auto;
-            cursor: pointer;
-          `;
+          overlay.style.cssText = 
+            'position: absolute;' +
+            'left: ' + (rect.left + scrollLeft) + 'px;' +
+            'top: ' + (rect.top + scrollTop) + 'px;' +
+            'width: ' + rect.width + 'px;' +
+            'height: ' + rect.height + 'px;' +
+            'background-color: rgba(255, 243, 205, 0.6);' +
+            'border-bottom: 2px solid #ffc107;' +
+            'pointer-events: auto;' +
+            'cursor: pointer;';
           
           overlay.addEventListener('click', function() {
             notifyAnnotationClick(annotationId);
