@@ -36,6 +36,7 @@ class _EditorPageState extends State<EditorPage> {
   Offset _stickyNotePosition = const Offset(500, 100); // Default position more to the right
   bool _isWebViewReady = false;
   String? _webViewError;
+  String _highlightMode = 'box'; // 'box' or 'text'
 
   @override
   void initState() {
@@ -427,6 +428,24 @@ class _EditorPageState extends State<EditorPage> {
             tooltip: '打开文件',
             onPressed: _openFile,
           ),
+          if (_isEditMode) ...[
+            const SizedBox(height: 16),
+            Tooltip(
+              message: _highlightMode == 'box' ? '切换到文本高亮' : '切换到框选高亮',
+              child: IconButton(
+                icon: Icon(_highlightMode == 'box' ? Icons.check_box_outlined : Icons.text_fields),
+                onPressed: () async {
+                  setState(() {
+                    _highlightMode = _highlightMode == 'box' ? 'text' : 'box';
+                  });
+                  await _webViewController.setHighlightMode(_highlightMode);
+                  // Refresh highlights with new mode
+                  await _webViewController.clearAllHighlights();
+                  await _webViewController.highlightAnnotations(_annotations);
+                },
+              ),
+            ),
+          ],
           if (_isEditMode && _isMultiSelectMode) ...[
             const SizedBox(height: 16),
             IconButton(

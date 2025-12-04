@@ -224,14 +224,21 @@ body {
   text-decoration: underline;
 }
 
-.annotation-highlight {
-  background-color: #fff3cd;
-  cursor: pointer;
-  border-bottom: 2px solid #ffc107;
+/* Overlay-based highlights (no DOM modification) */
+.annotation-overlay {
+  transition: opacity 0.2s;
 }
 
-.annotation-highlight:hover {
-  background-color: #ffe69c;
+.annotation-overlay:hover {
+  opacity: 0.8;
+}
+
+.annotation-overlay-box {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.annotation-overlay-text {
+  /* Precise text highlighting */
 }
 ''';
   }

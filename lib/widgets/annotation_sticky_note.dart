@@ -34,12 +34,23 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
   double _width = 300;
   double _height = 100;
   
-  // Minimum and maximum sizes - max set to screen size
+  // Minimum and maximum sizes
   static const double _minWidth = 250;
   static const double _minHeight = 100;
+  static const double _sidebarWidth = 60; // Left sidebar
+  static const double _annotationListWidth = 250; // Right annotation list
+  static const double _margin = 20;
   
-  double get _maxWidth => MediaQuery.of(context).size.width - 40; // 20px margin on each side
-  double get _maxHeight => MediaQuery.of(context).size.height - 40;
+  // Max size constrained by screen and sidebar areas
+  double get _maxWidth {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return screenWidth - _sidebarWidth - _annotationListWidth - (_margin * 2);
+  }
+  
+  double get _maxHeight {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return screenHeight - (_margin * 2);
+  }
 
   @override
   void initState() {
@@ -66,15 +77,21 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
     });
   }
   
-  // Constrain position to stay within screen bounds
+  // Constrain position to stay within screen bounds (excluding sidebars)
   Offset _constrainPosition(Offset newPosition, Size noteSize) {
     final screenSize = MediaQuery.of(context).size;
-    final maxX = screenSize.width - noteSize.width;
+    // Left bound: after left sidebar
+    final minX = _sidebarWidth;
+    // Right bound: before annotation list
+    final maxX = screenSize.width - _annotationListWidth - noteSize.width;
+    // Top bound
+    final minY = 0.0;
+    // Bottom bound
     final maxY = screenSize.height - noteSize.height;
     
     return Offset(
-      newPosition.dx.clamp(0.0, maxX.clamp(0.0, screenSize.width)),
-      newPosition.dy.clamp(0.0, maxY.clamp(0.0, screenSize.height)),
+      newPosition.dx.clamp(minX, maxX.clamp(minX, screenSize.width - noteSize.width)),
+      newPosition.dy.clamp(minY, maxY.clamp(0.0, screenSize.height - noteSize.height)),
     );
   }
   

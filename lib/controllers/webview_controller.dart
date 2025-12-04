@@ -4,11 +4,15 @@ import 'package:webview_windows/webview_windows.dart';
 import '../models/annotation.dart';
 
 /// Controller for WebView management and JavaScript Bridge
+/// Uses CSS overlay-based highlighting instead of DOM manipulation
 class WebViewController {
   WebviewController? _webViewController;
   final Function(String text, String anchorId, int startOffset, int endOffset)?
       onTextSelected;
   final Function(String annotationId)? onAnnotationClicked;
+  
+  // Highlighting mode: 'text' for text-only or 'box' for box selection
+  String _highlightMode = 'box';
 
   WebViewController({
     this.onTextSelected,
@@ -19,6 +23,16 @@ class WebViewController {
   void setWebViewController(WebviewController controller) {
     _webViewController = controller;
   }
+  
+  /// Set highlight mode
+  Future<void> setHighlightMode(String mode) async {
+    _highlightMode = mode;
+    if (_webViewController != null) {
+      await _webViewController!.executeScript('''
+        window.annotationHighlightMode = '$mode';
+      ''');
+    }
+  }
 
   /// Load HTML content into WebView
   Future<void> loadHtmlContent(String htmlContent) async {
@@ -27,175 +41,156 @@ class WebViewController {
     await _webViewController!.loadStringContent(htmlContent);
   }
 
-  /// Inject JavaScript to highlight an annotation
-  /// Uses anchor ID for precise positioning to handle duplicate text
+  /// Inject JavaScript to highlight an annotation using overlay system
+  /// Creates CSS overlays instead of modifying DOM - works with all text types
   Future<void> highlightAnnotation(Annotation annotation) async {
     if (_webViewController == null) return;
 
     final script = '''
     (function() {
       try {
-        // Create highlight for annotation
         const anchorId = '${annotation.anchorId}';
         const annotationId = '${annotation.id}';
         const text = ${_escapeJsString(annotation.selectedText)};
-        const startOffset = ${annotation.startOffset};
-        const endOffset = ${annotation.endOffset};
+        const mode = window.annotationHighlightMode || 'box';
         
-        // Find and highlight text using anchor-based positioning
-        highlightTextByAnchor(anchorId, annotationId, text, startOffset, endOffset);
+        // Create overlay highlight using bounding rectangles
+        createOverlayHighlight(anchorId, annotationId, text, mode);
       } catch (e) {
         console.error('Error highlighting annotation:', e);
       }
     })();
     
-    function highlightTextByAnchor(anchorId, annotationId, text, startOffset, endOffset) {
+    function createOverlayHighlight(anchorId, annotationId, text, mode) {
+      // Find the text in document
       const body = document.querySelector('.markdown-body');
       if (!body) return;
       
-      // Parse anchor ID to get node path
-      const parts = anchorId.split('_').filter(p => p !== 'anchor' && p !== '');
-      if (parts.length === 0) {
-        // Fallback: search for text in document
-        highlightTextInElement(body, text, annotationId);
+      // Try to find text using anchor path first
+      let range = findTextByAnchor(anchorId, body);
+      
+      // Fallback to text search if anchor fails
+      if (!range) {
+        range = findTextInElement(body, text);
+      }
+      
+      if (!range) {
+        console.error('Could not find text to highlight');
         return;
       }
       
-      // Navigate to the node using the path
-      const nodePath = parts.slice(0, -1).map(p => parseInt(p));
-      const anchorOffset = parseInt(parts[parts.length - 1]);
+      // Get bounding rectangles for the range
+      const rects = range.getClientRects();
+      if (rects.length === 0) return;
       
-      // Find the start node using path
-      let currentNode = body;
-      for (const index of nodePath) {
-        if (currentNode.childNodes && currentNode.childNodes[index]) {
-          currentNode = currentNode.childNodes[index];
-        } else {
-          // Path not valid, fallback to text search
-          highlightTextInElement(body, text, annotationId);
-          return;
-        }
+      // Create overlay container if it doesn't exist
+      let overlayContainer = document.getElementById('annotation-overlay-container');
+      if (!overlayContainer) {
+        overlayContainer = document.createElement('div');
+        overlayContainer.id = 'annotation-overlay-container';
+        overlayContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;';
+        document.body.appendChild(overlayContainer);
       }
       
-      // Now we have the start node, create range and highlight
-      try {
-        const range = document.createRange();
-        const textLength = text.length;
+      // Remove existing overlays for this annotation
+      const existing = overlayContainer.querySelectorAll(`[data-annotation-id="${annotationId}"]`);
+      existing.forEach(el => el.remove());
+      
+      // Create highlights based on mode
+      if (mode === 'box') {
+        // Box mode: create a single box around the entire selection
+        const boundingRect = range.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
         
-        // Find text nodes starting from current position
-        const walker = document.createTreeWalker(
-          body,
-          NodeFilter.SHOW_TEXT,
-          null,
-          false
-        );
+        const overlay = document.createElement('div');
+        overlay.className = 'annotation-overlay annotation-overlay-box';
+        overlay.setAttribute('data-annotation-id', annotationId);
+        overlay.style.cssText = `
+          position: absolute;
+          left: ${boundingRect.left + scrollLeft}px;
+          top: ${boundingRect.top + scrollTop}px;
+          width: ${boundingRect.width}px;
+          height: ${boundingRect.height}px;
+          background-color: rgba(255, 243, 205, 0.5);
+          border: 2px solid #ffc107;
+          pointer-events: auto;
+          cursor: pointer;
+        `;
         
-        // Position walker at or near our start node
-        let node;
-        let foundStart = false;
-        while (node = walker.nextNode()) {
-          if (node === currentNode || node.contains(currentNode) || currentNode.contains(node)) {
-            foundStart = true;
-            break;
-          }
-        }
+        overlay.addEventListener('click', function() {
+          notifyAnnotationClick(annotationId);
+        });
         
-        if (!foundStart) {
-          // Fallback to text search
-          highlightTextInElement(body, text, annotationId);
-          return;
-        }
+        overlayContainer.appendChild(overlay);
+      } else {
+        // Text mode: create overlays for each line
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
         
-        // Now find the exact position using text matching
-        let textFound = false;
-        let searchPos = 0;
-        walker.currentNode = body;
-        
-        while (node = walker.nextNode()) {
-          const nodeText = node.textContent;
-          const nodeLength = nodeText.length;
+        for (let i = 0; i < rects.length; i++) {
+          const rect = rects[i];
+          if (rect.width === 0 || rect.height === 0) continue;
           
-          // Check if this node contains our text
-          for (let i = 0; i <= nodeLength; i++) {
-            if (searchPos + nodeLength >= startOffset && 
-                searchPos + i >= startOffset && 
-                nodeText.substring(i, i + textLength) === text) {
-              // Found it! Create highlight
-              range.setStart(node, i);
-              
-              // Find end node
-              let remaining = textLength;
-              let endNode = node;
-              let endOff = i + textLength;
-              
-              if (endOff > nodeLength) {
-                // Spans multiple nodes
-                let currentWalker = document.createTreeWalker(
-                  body,
-                  NodeFilter.SHOW_TEXT,
-                  null,
-                  false
-                );
-                currentWalker.currentNode = node;
-                
-                let covered = nodeLength - i;
-                remaining -= covered;
-                
-                while (remaining > 0 && (endNode = currentWalker.nextNode())) {
-                  if (remaining <= endNode.textContent.length) {
-                    endOff = remaining;
-                    break;
-                  }
-                  remaining -= endNode.textContent.length;
-                }
-              }
-              
-              range.setEnd(endNode, Math.min(endOff, endNode.textContent.length));
-              
-              // Extract and wrap with mark
-              const contents = range.extractContents();
-              const mark = document.createElement('mark');
-              mark.className = 'annotation-highlight';
-              mark.setAttribute('data-annotation-id', annotationId);
-              mark.appendChild(contents);
-              range.insertNode(mark);
-              
-              textFound = true;
-              break;
-            }
-          }
+          const overlay = document.createElement('div');
+          overlay.className = 'annotation-overlay annotation-overlay-text';
+          overlay.setAttribute('data-annotation-id', annotationId);
+          overlay.style.cssText = `
+            position: absolute;
+            left: ${rect.left + scrollLeft}px;
+            top: ${rect.top + scrollTop}px;
+            width: ${rect.width}px;
+            height: ${rect.height}px;
+            background-color: rgba(255, 243, 205, 0.6);
+            border-bottom: 2px solid #ffc107;
+            pointer-events: auto;
+            cursor: pointer;
+          `;
           
-          if (textFound) break;
-          searchPos += nodeLength;
+          overlay.addEventListener('click', function() {
+            notifyAnnotationClick(annotationId);
+          });
+          
+          overlayContainer.appendChild(overlay);
         }
-        
-        if (!textFound) {
-          // Final fallback
-          highlightTextInElement(body, text, annotationId);
-        }
-        
-      } catch (e) {
-        console.error('Error in anchor-based highlighting:', e);
-        // Fallback to text search
-        highlightTextInElement(body, text, annotationId);
       }
     }
     
-    function highlightTextInElement(element, searchText, annotationId) {
-      // Get all text content and find the search text
+    function findTextByAnchor(anchorId, body) {
+      try {
+        const parts = anchorId.split('_').filter(p => p !== 'anchor' && p !== '');
+        if (parts.length === 0) return null;
+        
+        const nodePath = parts.slice(0, -1).map(p => parseInt(p));
+        const anchorOffset = parseInt(parts[parts.length - 1]);
+        
+        let currentNode = body;
+        for (const index of nodePath) {
+          if (currentNode.childNodes && currentNode.childNodes[index]) {
+            currentNode = currentNode.childNodes[index];
+          } else {
+            return null;
+          }
+        }
+        
+        if (currentNode.nodeType === Node.TEXT_NODE) {
+          const range = document.createRange();
+          range.setStart(currentNode, anchorOffset);
+          return range;
+        }
+      } catch (e) {
+        console.error('Error finding text by anchor:', e);
+      }
+      return null;
+    }
+    
+    function findTextInElement(element, searchText) {
       const textContent = element.textContent;
       const index = textContent.indexOf(searchText);
       
-      if (index === -1) return false;
+      if (index === -1) return null;
       
-      // Find the text nodes that contain our search text
       let currentPos = 0;
-      let startNode = null;
-      let startOffset = 0;
-      let endNode = null;
-      let endOffset = 0;
-      let searchLength = searchText.length;
-      
       const walker = document.createTreeWalker(
         element,
         NodeFilter.SHOW_TEXT,
@@ -208,46 +203,43 @@ class WebViewController {
         const nodeLength = node.textContent.length;
         const nodeEnd = currentPos + nodeLength;
         
-        // Check if this node contains the start of our search text
-        if (startNode === null && index >= currentPos && index < nodeEnd) {
-          startNode = node;
-          startOffset = index - currentPos;
-        }
-        
-        // Check if this node contains the end of our search text
-        if (startNode !== null && (index + searchLength) <= nodeEnd) {
-          endNode = node;
-          endOffset = (index + searchLength) - currentPos;
-          break;
+        if (index >= currentPos && index < nodeEnd) {
+          const range = document.createRange();
+          const startOffset = index - currentPos;
+          range.setStart(node, startOffset);
+          
+          // Find end position
+          let remaining = searchText.length - (nodeLength - startOffset);
+          if (remaining <= 0) {
+            range.setEnd(node, startOffset + searchText.length);
+          } else {
+            range.setEnd(node, nodeLength);
+            let endNode = node;
+            while (remaining > 0 && (endNode = walker.nextNode())) {
+              if (remaining <= endNode.textContent.length) {
+                range.setEnd(endNode, remaining);
+                break;
+              }
+              remaining -= endNode.textContent.length;
+            }
+          }
+          
+          return range;
         }
         
         currentPos = nodeEnd;
       }
       
-      if (!startNode || !endNode) return false;
-      
-      try {
-        // Create a range spanning from start to end
-        const range = document.createRange();
-        range.setStart(startNode, startOffset);
-        range.setEnd(endNode, endOffset);
-        
-        // Extract the contents
-        const contents = range.extractContents();
-        
-        // Create mark element
-        const mark = document.createElement('mark');
-        mark.className = 'annotation-highlight';
-        mark.setAttribute('data-annotation-id', annotationId);
-        mark.appendChild(contents);
-        
-        // Insert the mark element
-        range.insertNode(mark);
-        
-        return true;
-      } catch (e) {
-        console.error('Error creating highlight:', e);
-        return false;
+      return null;
+    }
+    
+    function notifyAnnotationClick(annotationId) {
+      if (window.chrome && window.chrome.webview) {
+        const data = {
+          handler: 'onAnnotationClicked',
+          annotationId: annotationId
+        };
+        window.chrome.webview.postMessage(JSON.stringify(data));
       }
     }
     ''';
@@ -268,14 +260,11 @@ class WebViewController {
 
     final script = '''
     (function() {
-      const marks = document.querySelectorAll('[data-annotation-id="${annotationId}"]');
-      marks.forEach(mark => {
-        const parent = mark.parentNode;
-        while (mark.firstChild) {
-          parent.insertBefore(mark.firstChild, mark);
-        }
-        parent.removeChild(mark);
-      });
+      const overlayContainer = document.getElementById('annotation-overlay-container');
+      if (overlayContainer) {
+        const overlays = overlayContainer.querySelectorAll('[data-annotation-id="${annotationId}"]');
+        overlays.forEach(overlay => overlay.remove());
+      }
     })();
     ''';
 
@@ -288,14 +277,10 @@ class WebViewController {
 
     final script = '''
     (function() {
-      const marks = document.querySelectorAll('.annotation-highlight');
-      marks.forEach(mark => {
-        const parent = mark.parentNode;
-        while (mark.firstChild) {
-          parent.insertBefore(mark.firstChild, mark);
-        }
-        parent.removeChild(mark);
-      });
+      const overlayContainer = document.getElementById('annotation-overlay-container');
+      if (overlayContainer) {
+        overlayContainer.remove();
+      }
     })();
     ''';
 
@@ -308,9 +293,17 @@ class WebViewController {
 
     final script = '''
     (function() {
-      const mark = document.querySelector('[data-annotation-id="${annotationId}"]');
-      if (mark) {
-        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const overlayContainer = document.getElementById('annotation-overlay-container');
+      if (overlayContainer) {
+        const overlay = overlayContainer.querySelector('[data-annotation-id="${annotationId}"]');
+        if (overlay) {
+          const rect = overlay.getBoundingClientRect();
+          const absoluteTop = rect.top + window.pageYOffset;
+          window.scrollTo({
+            top: absoluteTop - window.innerHeight / 2 + rect.height / 2,
+            behavior: 'smooth'
+          });
+        }
       }
     })();
     ''';
