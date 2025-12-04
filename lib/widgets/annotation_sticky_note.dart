@@ -171,7 +171,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '批注',
+                                'Annotation',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -188,7 +188,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                               ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              tooltip: _isExpanded ? '折叠' : '展开',
+                              tooltip: _isExpanded ? 'Collapse' : 'Expand',
                               onPressed: () {
                                 setState(() {
                                   _isExpanded = !_isExpanded;
@@ -205,7 +205,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                               icon: const Icon(Icons.close, size: 16),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              tooltip: '关闭',
+                              tooltip: 'Close',
                               onPressed: widget.onClose,
                             ),
                           ],
@@ -302,7 +302,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                             TextButton.icon(
                               icon: const Icon(Icons.edit, size: 14),
                               label: const Text(
-                                '编辑',
+                                'Edit',
                                 style: TextStyle(fontSize: 12),
                               ),
                               onPressed: widget.onEdit,
@@ -311,7 +311,7 @@ class _AnnotationStickyNoteState extends State<AnnotationStickyNote> {
                             TextButton.icon(
                               icon: const Icon(Icons.delete, size: 14),
                               label: const Text(
-                                '删除',
+                                'Delete',
                                 style: TextStyle(fontSize: 12),
                               ),
                               style: TextButton.styleFrom(

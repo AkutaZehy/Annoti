@@ -28,7 +28,7 @@ class AnnotationList extends StatelessWidget {
     if (annotations.isEmpty) {
       return const Center(
         child: Text(
-          '暂无批注',
+          'No annotations yet',
           style: TextStyle(
             color: Colors.grey,
             fontSize: 14,
@@ -84,7 +84,7 @@ class AnnotationList extends StatelessWidget {
                           children: [
                             Icon(Icons.edit, size: 16),
                             SizedBox(width: 8),
-                            Text('编辑', style: TextStyle(fontSize: 12)),
+                            Text('Edit', style: TextStyle(fontSize: 12)),
                           ],
                         ),
                       ),
@@ -95,7 +95,7 @@ class AnnotationList extends StatelessWidget {
                             Icon(Icons.delete, size: 16, color: Colors.red),
                             SizedBox(width: 8),
                             Text(
-                              '删除',
+                              'Delete',
                               style: TextStyle(fontSize: 12, color: Colors.red),
                             ),
                           ],
