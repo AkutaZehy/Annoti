@@ -33,7 +33,7 @@ class _EditorPageState extends State<EditorPage> {
   bool _isMultiSelectMode = false;
   final Set<String> _selectedAnnotationIds = {};
   Annotation? _activeAnnotation;
-  Offset _stickyNotePosition = const Offset(100, 100);
+  Offset _stickyNotePosition = const Offset(500, 100); // Default position more to the right
   bool _isWebViewReady = false;
   String? _webViewError;
 
@@ -153,7 +153,11 @@ class _EditorPageState extends State<EditorPage> {
     if (annotation.id.isNotEmpty) {
       setState(() {
         _activeAnnotation = annotation;
-        _stickyNotePosition = const Offset(100, 100);
+        // Position sticky note more to the right side of the screen
+        _stickyNotePosition = Offset(
+          MediaQuery.of(context).size.width * 0.5, // Center-right position
+          100,
+        );
       });
     }
   }
