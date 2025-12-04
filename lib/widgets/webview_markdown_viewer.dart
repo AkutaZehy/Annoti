@@ -278,10 +278,6 @@ class WebViewMarkdownViewerState extends State<WebViewMarkdownViewer> {
           }
         }
         
-        function escapeRegExp(string) {
-          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        }
-        
         // Context menu for annotations
         document.addEventListener('contextmenu', function(e) {
           const selection = window.getSelection();
