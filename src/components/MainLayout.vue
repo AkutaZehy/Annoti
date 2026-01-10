@@ -1,14 +1,26 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import DocumentViewer from "./DocumentViewer.vue";
 import AnnotationList from "./AnnotationList.vue";
 import TopBar from "./TopBar.vue";
-import { useDocument } from "../composables/useDocument"; // 引入新的 Composable
+import { useDocument } from "../composables/useDocument";
+import { useAnnotations } from "../composables/useAnnotations";
 
 const viewerRef = ref<InstanceType<typeof DocumentViewer> | null>(null);
 
 // 从 Composable 获取文档内容
 const { docContent } = useDocument();
+const { annotations } = useAnnotations();
+
+// 监听批注变化，文档加载后恢复高亮
+watch(() => annotations.value.length, async (newLen, oldLen) => {
+    // 当批注从空变为有内容时（文档加载完成）
+    if (newLen > 0 && oldLen === 0 && docContent.value) {
+        // 等待 DOM 渲染
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await viewerRef.value?.restoreHighlights();
+    }
+});
 
 const onAddClick = () => {
     viewerRef.value?.handleHighlight();

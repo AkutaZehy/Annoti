@@ -19,7 +19,7 @@ const emit = defineEmits<{
                 v-for="item in annotations"
                 :key="item.id"
                 class="card"
-                @click="emit('locate', item.domId)">
+                @click="emit('locate', item.id)">
                 <div class="card-text">"{{ item.text }}"</div>
                 <div class="card-time">
                     {{ new Date(item.createdAt).toLocaleTimeString() }}

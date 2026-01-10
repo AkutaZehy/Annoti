@@ -2,29 +2,165 @@
 import { ref, computed } from "vue";
 import { marked } from "marked";
 import { useAnnotations } from "../composables/useAnnotations";
+import type { Annotation, AnnotationAnchor } from "../types";
 
 const props = defineProps<{
     content: string;
 }>();
 
-const { addAnnotation } = useAnnotations();
+const { addAnnotation, annotations } = useAnnotations();
 const containerRef = ref<HTMLElement | null>(null);
+
+// 标记是否正在恢复高亮（避免触发新的保存）
+const isRestoring = ref(false);
 
 // 渲染 Markdown
 const renderedContent = computed(() => marked(props.content));
 
-// --- 核心工具函数：获取Range内的所有文本节点 ---
-// 这是一个递归查找的过程，专门找出那些真正包含文字的节点
+// --- 生成父元素的 CSS 选择器路径 ---
+const generateContainerPath = (node: Node): string => {
+    const path: string[] = [];
+    let current: Node | null = node;
+
+    while (current && current !== containerRef.value) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+            const el = current as Element;
+
+            // 如果元素有 ID，使用 ID 选择器（最快）
+            if (el.id) {
+                path.unshift(`#${el.id}`);
+                break;
+            }
+
+            // 如果元素有 class，使用 class 选择器
+            if (el.className && typeof el.className === 'string' && el.className.trim()) {
+                path.unshift(el.className.trim().split(/\s+/).join('.'));
+            } else {
+                // 使用标签名 + 索引
+                let index = 1;
+                let sibling = current.previousSibling;
+                while (sibling) {
+                    if (sibling.nodeType === Node.ELEMENT_NODE) {
+                        const sibEl = sibling as Element;
+                        if (sibEl.tagName === (current as Element).tagName) {
+                            index++;
+                        }
+                    }
+                    sibling = sibling.previousSibling;
+                }
+                const tag = el.tagName.toLowerCase();
+                path.unshift(`${tag}:nth-of-type(${index})`);
+            }
+        }
+        current = current.parentNode;
+    }
+
+    // 加上容器选择器
+    if (containerRef.value) {
+        path.unshift('.markdown-body');
+    }
+
+    return path.join(' > ');
+};
+
+// --- 获取文本节点在父元素中的索引 ---
+const getTextNodeIndex = (textNode: Text): number => {
+    const parent = textNode.parentElement;
+    if (!parent) return 0;
+
+    let index = 0;
+    let sibling: Node | null = parent.firstChild;
+
+    while (sibling) {
+        if (sibling.nodeType === Node.TEXT_NODE) {
+            if (sibling === textNode) {
+                return index;
+            }
+            index++;
+        }
+        sibling = sibling.nextSibling;
+    }
+
+    return 0;
+};
+
+// --- 暴露给父组件的方法 ---
+
+// 1. 执行跨段落高亮并保存数据
+const handleHighlight = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed)
+        return;
+
+    const range = selection.getRangeAt(0);
+    const text = selection.toString();
+    const annotationId = `anno-${Date.now()}`;
+
+    // 获取所有受影响的文本节点
+    const textNodes = getTextNodesInRange(range);
+
+    if (textNodes.length === 0) return;
+
+    // 为每个文本节点创建 anchor 并高亮
+    const anchors: AnnotationAnchor[] = [];
+
+    textNodes.forEach((textNode, index) => {
+        // 计算这个节点的子范围
+        const subRange = document.createRange();
+        subRange.selectNodeContents(textNode);
+
+        // 处理边界情况
+        if (textNode === range.startContainer) {
+            subRange.setStart(textNode, range.startOffset);
+        }
+        if (textNode === range.endContainer) {
+            subRange.setEnd(textNode, range.endOffset);
+        }
+
+        // 生成父元素路径和文本节点索引
+        const containerPath = generateContainerPath(textNode);
+        const textNodeIndex = getTextNodeIndex(textNode);
+
+        // 保存 anchor 信息
+        const anchor: AnnotationAnchor = {
+            containerPath,
+            textNodeIndex,
+            startOffset: subRange.startOffset,
+            endOffset: subRange.endOffset
+        };
+        anchors.push(anchor);
+
+        // 创建高亮包裹元素
+        const span = document.createElement("span");
+        span.className = "doc-highlight";
+        span.style.backgroundColor = "rgba(255, 215, 0, 0.3)";
+        span.style.cursor = "pointer";
+        span.style.borderBottom = "2px solid gold";
+        span.dataset.groupId = annotationId;
+
+        if (index === 0) {
+            span.id = annotationId;
+        }
+
+        try {
+            subRange.surroundContents(span);
+        } catch (e) {
+            console.error("Highlight error on node", textNode, e);
+        }
+    });
+
+    // 保存数据
+    addAnnotation(text, anchors, annotationId);
+
+    selection.removeAllRanges();
+};
+
+// 获取 Range 内的所有文本节点
 const getTextNodesInRange = (range: Range): Text[] => {
     const textNodes: Text[] = [];
-
-    // 创建一个 TreeWalker，专门只看文本节点 (SHOW_TEXT)
-    // root 设置为 range.commonAncestorContainer，即选区的最小公共父节点
     const root = range.commonAncestorContainer;
 
-    // 如果公共父节点本身就是文本节点（即选区在同一个纯文本节点内）
     if (root.nodeType === Node.TEXT_NODE) {
-        // 只有当这个文本节点真正和Range有交集时才返回
         if (range.intersectsNode(root)) {
             return [root as Text];
         }
@@ -33,7 +169,11 @@ const getTextNodesInRange = (range: Range): Text[] => {
 
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
         acceptNode: (node) => {
-            // 关键逻辑：判断这个节点是否在 Range 范围内
+            // 过滤空白文本节点（仅包含空格、换行符、制表符）
+            const textContent = (node as Text).textContent || '';
+            if (/^\s*$/.test(textContent)) {
+                return NodeFilter.FILTER_REJECT;
+            }
             return range.intersectsNode(node)
                 ? NodeFilter.FILTER_ACCEPT
                 : NodeFilter.FILTER_REJECT;
@@ -47,78 +187,12 @@ const getTextNodesInRange = (range: Range): Text[] => {
     return textNodes;
 };
 
-// --- 暴露给父组件的方法 ---
-
-// 1. 执行跨段落高亮并保存数据
-const handleHighlight = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed)
-        return;
-
-    const range = selection.getRangeAt(0);
-    const text = selection.toString(); // 获取纯文本内容
-    const annotationId = `anno-${Date.now()}`; // 生成唯一业务ID
-
-    // 获取所有受影响的文本节点
-    const textNodes = getTextNodesInRange(range);
-
-    if (textNodes.length === 0) return;
-
-    // 倒序处理：修改 DOM 时最好从后往前，以免索引变化影响前面的节点
-    // 但对于 wrap 操作，顺序其实影响不大，为了逻辑清晰，我们按顺序处理
-    textNodes.forEach((textNode, index) => {
-        // 创建一个新的 Range 用于处理当前这个单独的文本节点
-        const subRange = document.createRange();
-        subRange.selectNodeContents(textNode);
-
-        // 处理边界情况：
-        // 如果是选区的第一个节点，开始位置要遵循原 Range 的 startOffset
-        if (textNode === range.startContainer) {
-            subRange.setStart(textNode, range.startOffset);
-        }
-        // 如果是选区的最后一个节点，结束位置要遵循原 Range 的 endOffset
-        if (textNode === range.endContainer) {
-            subRange.setEnd(textNode, range.endOffset);
-        }
-
-        // 创建高亮包裹元素
-        const span = document.createElement("span");
-        span.className = "doc-highlight";
-        span.style.backgroundColor = "rgba(255, 215, 0, 0.3)";
-        span.style.cursor = "pointer";
-        span.style.borderBottom = "2px solid gold";
-
-        // 给所有片段加上相同的 data-id，方便后续可能的高级操作（如鼠标悬停高亮一组）
-        span.dataset.groupId = annotationId;
-
-        // 只有第一个片段会被赋予 ID，用于 scrollIntoView 定位
-        if (index === 0) {
-            span.id = annotationId;
-        }
-
-        try {
-            // 现在的 subRange 保证只在一个文本节点内，surroundContents 安全了
-            subRange.surroundContents(span);
-        } catch (e) {
-            console.error("Highlight error on node", textNode, e);
-        }
-    });
-
-    // 保存数据
-    // 注意：domId 我们存的是 annotationId，它对应的是第一个 span 的 id
-    addAnnotation(text, annotationId);
-
-    // 清除选中状态
-    selection.removeAllRanges();
-};
-
-// 2. 定位到指定的高亮元素 (逻辑不变，因为我们给第一个span设置了ID)
+// 2. 定位到指定的高亮元素
 const scrollToHighlight = (domId: string) => {
     const el = document.getElementById(domId);
     if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
 
-        // 视觉反馈：我们可以通过 dataset.groupId 找到同组的所有片段一起闪烁
         const group = document.querySelectorAll(`[data-group-id="${domId}"]`);
 
         group.forEach((node) => {
@@ -126,7 +200,7 @@ const scrollToHighlight = (domId: string) => {
             const originalBg = htmlNode.style.backgroundColor;
 
             htmlNode.style.transition = "background 0.3s";
-            htmlNode.style.backgroundColor = "rgba(255, 100, 100, 0.5)"; // 红色闪烁
+            htmlNode.style.backgroundColor = "rgba(255, 100, 100, 0.5)";
 
             setTimeout(() => {
                 htmlNode.style.backgroundColor = originalBg;
@@ -135,9 +209,105 @@ const scrollToHighlight = (domId: string) => {
     }
 };
 
+// 3. 恢复高亮（使用 anchor 信息）
+const restoreHighlights = async () => {
+    const container = containerRef.value;
+    if (!container || container.children.length === 0) return;
+
+    if (annotations.value.length === 0) return;
+
+    isRestoring.value = true;
+
+    try {
+        for (const anno of annotations.value) {
+            await applyHighlight(anno);
+        }
+    } finally {
+        isRestoring.value = false;
+    }
+};
+
+// 根据 anchor 恢复单个高亮
+const applyHighlight = async (anno: Annotation) => {
+    const container = containerRef.value;
+    if (!container || !anno.anchor) return;
+
+    const anchors = anno.anchor;
+
+    for (let i = 0; i < anchors.length; i++) {
+        const anchor = anchors[i];
+        if (!restoreSingleHighlight(container, anchor, anno.id, i === 0)) {
+            console.warn(`无法恢复片段 ${i} for annotation:`, anno.id);
+        }
+    }
+};
+
+// 恢复单个高亮片段
+const restoreSingleHighlight = (
+    container: HTMLElement,
+    anchor: AnnotationAnchor,
+    groupId: string,
+    isFirst: boolean
+): boolean => {
+    try {
+        // 通过选择器找到父元素
+        const parentEl = container.querySelector(anchor.containerPath);
+        if (!parentEl) {
+            console.warn('找不到父元素:', anchor.containerPath);
+            return false;
+        }
+
+        // 找到指定索引的文本节点
+        let textNode: Node | null = null;
+        let currentNode: Node | null = parentEl.firstChild;
+        let currentIndex = 0;
+
+        while (currentNode) {
+            if (currentNode.nodeType === Node.TEXT_NODE) {
+                if (currentIndex === anchor.textNodeIndex) {
+                    textNode = currentNode;
+                    break;
+                }
+                currentIndex++;
+            }
+            currentNode = currentNode.nextSibling;
+        }
+
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+            console.warn('找不到文本节点, index:', anchor.textNodeIndex);
+            return false;
+        }
+
+        // 创建范围并高亮
+        const range = document.createRange();
+        range.setStart(textNode, anchor.startOffset);
+        range.setEnd(textNode, Math.min(anchor.endOffset, textNode.textContent?.length || 0));
+
+        // 创建高亮元素
+        const span = document.createElement("span");
+        span.className = "doc-highlight";
+        span.style.backgroundColor = "rgba(255, 215, 0, 0.3)";
+        span.style.cursor = "pointer";
+        span.style.borderBottom = "2px solid gold";
+        span.dataset.groupId = groupId;
+
+        if (isFirst) {
+            span.id = groupId;
+        }
+
+        range.surroundContents(span);
+        return true;
+
+    } catch (e) {
+        console.error('恢复高亮失败:', e);
+        return false;
+    }
+};
+
 defineExpose({
     handleHighlight,
     scrollToHighlight,
+    restoreHighlights,
 });
 </script>
 
@@ -149,7 +319,6 @@ defineExpose({
 </template>
 
 <style scoped>
-/* 保持原有样式不变 */
 .markdown-body {
     padding: 40px;
     line-height: 1.8;
