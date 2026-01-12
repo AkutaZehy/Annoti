@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useSettings } from '../composables/useSettings';
+import TypographySettings from './TypographySettings.vue';
 import type { SettingsRecord } from '../types';
 
 const { settings, loadSettings, saveSettings, openSettingsDir, currentUser, updateUserName, rerollUserName } = useSettings();
 
 const visible = ref(false);
+const typographyVisible = ref(false);
 const editingSettings = ref<SettingsRecord | null>(null);
 const newUserName = ref('');
 const showRerollConfirm = ref(false);
@@ -65,6 +67,16 @@ const onRerollName = async () => {
 // 打开设置目录
 const onOpenSettingsDir = async () => {
   await openSettingsDir();
+};
+
+// 打开排版设置
+const openTypographySettings = () => {
+  typographyVisible.value = true;
+};
+
+// 关闭排版设置
+const closeTypographySettings = () => {
+  typographyVisible.value = false;
 };
 
 // 监听设置加载
@@ -195,6 +207,19 @@ defineExpose({ open, close });
               </button>
             </div>
           </section>
+
+          <!-- 排版设置 -->
+          <section class="settings-section">
+            <h3>排版 / Typography</h3>
+            <div class="form-group">
+              <p class="description">
+                自定义文档渲染样式，包括字体、间距、CJK 字符宽度等。
+              </p>
+              <button class="btn-secondary" @click="openTypographySettings">
+                打开排版设置
+              </button>
+            </div>
+          </section>
         </div>
 
         <div class="dialog-footer">
@@ -206,9 +231,79 @@ defineExpose({ open, close });
       </div>
     </div>
   </Teleport>
+
+  <!-- Typography Settings Dialog -->
+  <Teleport to="body">
+    <div v-if="typographyVisible" class="settings-overlay" @click.self="closeTypographySettings">
+      <div class="typography-dialog">
+        <div class="dialog-header">
+          <h2>Typography Settings</h2>
+          <button class="close-btn" @click="closeTypographySettings">&times;</button>
+        </div>
+        <div class="dialog-content typography-content">
+          <TypographySettings />
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
+.description {
+  color: #888;
+  font-size: 0.85rem;
+  margin: 0 0 12px 0;
+}
+
+.typography-dialog {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.typography-dialog .dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #333;
+}
+
+.typography-dialog .dialog-header h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.typography-dialog .dialog-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.typography-content :deep(.typography-settings) {
+  background: transparent;
+  padding: 20px;
+}
+
+.typography-dialog .close-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.typography-dialog .close-btn:hover {
+  color: #fff;
+}
+
 .settings-overlay {
   position: fixed;
   top: 0;

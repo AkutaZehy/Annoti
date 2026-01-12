@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { marked } from "marked";
 import { useAnnotations } from "../composables/useAnnotations";
 import { useSettings } from "../composables/useSettings";
 import { useDocument } from "../composables/useDocument";
+import { useTypography } from "../composables/useTypography";
+import { createRendererFromPreset } from "../utils/typographyRenderer";
+import TextViewer from "./TextViewer.vue";
 import type { Annotation, AnnotationAnchor } from "../types";
+import type { RenderedLine } from "../utils/typographyRenderer";
 
 const emit = defineEmits<{
     (e: "wakeNote", payload: { annotationId: string; clickX: number; clickY: number }): void;
 }>();
-
-// 添加点击高亮的事件处理
 
 const props = defineProps<{
     content: string;
@@ -19,13 +21,63 @@ const props = defineProps<{
 const { annotations, updateAnnotation } = useAnnotations();
 const { getDefaultHighlightColor, getDefaultHighlightType } = useSettings();
 const { addHighlightAnnotation } = useDocument();
+const { config, isFixedMode, fixedPreset } = useTypography();
+
 const containerRef = ref<HTMLElement | null>(null);
 
 // 标记是否正在恢复高亮（避免触发新的保存）
 const isRestoring = ref(false);
 
-// 渲染 Markdown
-const renderedContent = computed(() => marked(props.content));
+// Typography renderer for fixed mode
+const typographyRenderer = computed(() => {
+    if (isFixedMode.value && !config.value.use_css_override) {
+        return createRendererFromPreset(fixedPreset.value);
+    }
+    return null;
+});
+
+// Fixed mode rendered lines
+const fixedLines = ref<RenderedLine[]>([]);
+
+// Watch content and preset changes to update rendering
+watch(
+    () => [props.content, config.value.preset, config.value.use_css_override, fixedPreset.value],
+    () => {
+        if (isFixedMode.value && !config.value.use_css_override && typographyRenderer.value) {
+            fixedLines.value = typographyRenderer.value.render(props.content);
+        } else {
+            fixedLines.value = [];
+        }
+    },
+    { immediate: true, deep: true }
+);
+
+// 渲染 Markdown (original preset)
+const renderedContent = computed(() => {
+    if (isFixedMode.value) {
+        return '';
+    }
+    // Configure marked with original preset settings
+    const markedOptions = {
+        breaks: true,
+        gfm: true,
+    };
+    return marked.parse(props.content, markedOptions);
+});
+
+// Container class based on typography mode
+const containerClass = computed(() => {
+    if (config.value.use_css_override) {
+        return 'typography-css-override';
+    }
+    return `typography-${config.value.preset}`;
+});
+
+// Whether to show original markdown content
+const showMarkdown = computed(() => !isFixedMode.value || config.value.use_css_override);
+
+// Whether to show fixed text content
+const showFixedText = computed(() => isFixedMode.value && !config.value.use_css_override);
 
 // --- 生成父元素的 CSS 选择器路径 ---
 const generateContainerPath = (node: Node): string => {
@@ -382,13 +434,30 @@ defineExpose({
 </script>
 
 <template>
-    <div
-        ref="containerRef"
-        class="markdown-body"
-        v-html="renderedContent"></div>
+    <div class="document-viewer" :class="containerClass">
+        <!-- Original Markdown Rendering -->
+        <div
+            v-if="showMarkdown"
+            ref="containerRef"
+            class="document-content markdown-body"
+            v-html="renderedContent"></div>
+
+        <!-- Fixed Text Rendering -->
+        <TextViewer
+            v-if="showFixedText"
+            :lines="fixedLines"
+            :show-line-numbers="fixedPreset.show_line_numbers"
+            class="document-content text-body"
+        />
+    </div>
 </template>
 
 <style scoped>
+.document-viewer {
+    width: 100%;
+    height: 100%;
+}
+
 .markdown-body {
     padding: 40px;
     line-height: 1.8;
@@ -397,6 +466,11 @@ defineExpose({
     max-width: 900px;
     margin: 0 auto;
 }
+
+.text-body {
+    width: 100%;
+}
+
 :deep(h1),
 :deep(h2) {
     border-bottom: 1px solid #444;
