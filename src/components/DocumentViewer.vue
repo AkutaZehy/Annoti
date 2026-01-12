@@ -8,7 +8,7 @@ const props = defineProps<{
     content: string;
 }>();
 
-const { addAnnotation, annotations } = useAnnotations();
+const { addAnnotation, annotations, updateAnnotation } = useAnnotations();
 const containerRef = ref<HTMLElement | null>(null);
 
 // 标记是否正在恢复高亮（避免触发新的保存）
@@ -149,8 +149,16 @@ const handleHighlight = () => {
         }
     });
 
+    // 弹出笔记输入框
+    const note = prompt("添加笔记（可选，直接确定跳过）：");
+
     // 保存数据
     addAnnotation(text, anchors, annotationId);
+
+    // 如果用户输入了笔记，立即更新
+    if (note !== null && note.trim() !== "") {
+        updateAnnotation(annotationId, note.trim());
+    }
 
     selection.removeAllRanges();
 };
@@ -304,10 +312,45 @@ const restoreSingleHighlight = (
     }
 };
 
+// 4. 移除高亮（删除批注时调用）
+const removeHighlight = (groupId: string) => {
+    const container = containerRef.value;
+    if (!container) return;
+
+    const highlights = container.querySelectorAll(`[data-group-id="${groupId}"]`);
+    highlights.forEach((node) => {
+        const span = node as HTMLElement;
+        const parent = span.parentNode;
+        if (parent) {
+            // 将 span 的内容替换为文本节点
+            const text = document.createTextNode(span.textContent || "");
+            parent.replaceChild(text, span);
+            // 清理相邻的重复文本节点
+            mergeWithSiblings(parent);
+        }
+    });
+};
+
+// 合并相邻的文本节点
+const mergeWithSiblings = (node: Node) => {
+    const parent = node.parentNode;
+    if (!parent) return;
+
+    let current = node.nextSibling;
+    while (current && current.nodeType === Node.TEXT_NODE) {
+        const textNode = node as Text;
+        const siblingText = current as Text;
+        textNode.textContent = (textNode.textContent || "") + (siblingText.textContent || "");
+        parent.removeChild(siblingText);
+        current = node.nextSibling;
+    }
+};
+
 defineExpose({
     handleHighlight,
     scrollToHighlight,
     restoreHighlights,
+    removeHighlight,
 });
 </script>
 

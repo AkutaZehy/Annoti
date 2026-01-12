@@ -56,13 +56,15 @@ const loadAnnotations = async (docPath: string): Promise<Annotation[] | null> =>
     if (Array.isArray(parsed) && parsed.every(a =>
       typeof a.id === 'string' &&
       typeof a.text === 'string' &&
+      (a.note === undefined || typeof a.note === 'string') &&
       Array.isArray(a.anchor) &&
       a.anchor.length > 0 &&
-      a.anchor.every(anch =>
-        typeof anch.containerPath === 'string' &&
-        typeof anch.textNodeIndex === 'number' &&
-        typeof anch.startOffset === 'number' &&
-        typeof anch.endOffset === 'number'
+      a.anchor.every((anch: unknown) =>
+        typeof anch === 'object' && anch !== null &&
+        typeof (anch as any).containerPath === 'string' &&
+        typeof (anch as any).textNodeIndex === 'number' &&
+        typeof (anch as any).startOffset === 'number' &&
+        typeof (anch as any).endOffset === 'number'
       ) &&
       typeof a.createdAt === 'number'
     )) {
@@ -159,11 +161,45 @@ export function useAnnotations() {
     await saveAnnotations();
   };
 
+  /**
+   * 更新批注的笔记内容
+   */
+  const updateAnnotation = async (id: string, note: string): Promise<boolean> => {
+    const index = annotations.value.findIndex(a => a.id === id);
+    if (index === -1) {
+      console.warn('找不到要更新的批注:', id);
+      return false;
+    }
+
+    annotations.value[index].note = note;
+    await saveAnnotations();
+    return true;
+  };
+
+  /**
+   * 删除批注
+   * @returns 返回被删除的批注数据，用于前端移除高亮
+   */
+  const deleteAnnotation = async (id: string): Promise<Annotation | null> => {
+    const index = annotations.value.findIndex(a => a.id === id);
+    if (index === -1) {
+      console.warn('找不到要删除的批注:', id);
+      return null;
+    }
+
+    const deleted = annotations.value[index];
+    annotations.value.splice(index, 1);
+    await saveAnnotations();
+    return deleted;
+  };
+
   return {
     annotations,
     setDocument,
     addAnnotation,
     getAnnotationById,
+    updateAnnotation,
+    deleteAnnotation,
     forceSave
   };
 }

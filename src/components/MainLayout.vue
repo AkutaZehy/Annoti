@@ -29,6 +29,10 @@ const onAddClick = () => {
 const onLocateRequest = (domId: string) => {
     viewerRef.value?.scrollToHighlight(domId);
 };
+
+const onDeleteAnnotation = (annotation: { id: string; anchor: any[] }) => {
+    viewerRef.value?.removeHighlight(annotation.id);
+};
 </script>
 
 <template>
@@ -43,7 +47,7 @@ const onLocateRequest = (domId: string) => {
             </section>
 
             <aside class="pane sidebar-pane">
-                <AnnotationList @locate="onLocateRequest" />
+                <AnnotationList @locate="onLocateRequest" @delete="onDeleteAnnotation" />
             </aside>
         </main>
     </div>

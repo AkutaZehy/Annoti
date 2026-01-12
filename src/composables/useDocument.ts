@@ -28,7 +28,7 @@ export function useDocument() {
       }
 
       // 2. 获取路径
-      const path = typeof selected === 'string' ? selected : selected.path;
+      const path = typeof selected === 'string' ? selected : (selected as any).path;
 
       // 3. 调用 Rust 后端读取内容
       const content = await invoke<string>('read_file_content', { path });
