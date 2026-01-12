@@ -1,0 +1,128 @@
+/* ============================================================================
+   Original Preset Styles
+   ============================================================================
+
+   Additional styles specific to the 'original' markdown rendering preset.
+   Base styles are in typography.css with CSS custom properties.
+
+   This file can be extended with preset-specific components if needed.
+*/
+
+/* Document container for original preset */
+.typography-original .document-viewer {
+  padding: 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Nested list indentation */
+.typography-original .document-content ul ul,
+.typography-original .document-content ul ol,
+.typography-original .document-content ol ul,
+.typography-original .document-content ol ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Horizontal rule */
+.typography-original .document-content hr {
+  border: none;
+  border-top: 1px solid var(--table-border-color);
+  margin: 2em 0;
+}
+
+/* Image styling */
+.typography-original .document-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em auto;
+}
+
+/* Inline code in headings */
+.typography-original .document-content h1 code,
+.typography-original .document-content h2 code,
+.typography-original .document-content h3 code {
+  font-size: 0.8em;
+}
+
+/* Definition lists */
+.typography-original .document-content dl {
+  padding-left: var(--list-padding-left);
+}
+
+.typography-original .document-content dt {
+  font-weight: bold;
+  margin-top: 1em;
+}
+
+.typography-original .document-content dd {
+  margin-left: 0;
+  margin-bottom: 1em;
+}
+
+/* Task lists */
+.typography-original .document-content ul.task-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.typography-original .document-content ul.task-list li {
+  position: relative;
+  padding-left: 1.5em;
+}
+
+.typography-original .document-content ul.task-list li input[type="checkbox"] {
+  position: absolute;
+  left: 0;
+  top: 0.3em;
+}
+
+/* Footnotes */
+.typography-original .document-content .footnote-ref {
+  font-size: 0.75em;
+  vertical-align: super;
+  color: var(--link-color);
+}
+
+.typography-original .document-content .footnotes {
+  margin-top: 3em;
+  padding-top: 1em;
+  border-top: 1px solid var(--table-border-color);
+  font-size: 0.9em;
+}
+
+/* Keyboard shortcuts */
+.typography-original .document-content kbd {
+  font-family: var(--code-font-family);
+  background: var(--code-background);
+  padding: 0.2em 0.5em;
+  border-radius: var(--code-border-radius);
+  border: 1px solid #444;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Subscript and superscript */
+.typography-original .document-content sub,
+.typography-original .document-content sup {
+  font-size: 0.75em;
+}
+
+.typography-original .document-content sup {
+  vertical-align: super;
+}
+
+.typography-original .document-content sub {
+  vertical-align: sub;
+}
+
+/* Selection styling */
+.typography-original .document-content ::selection {
+  background: rgba(108, 170, 252, 0.3);
+}
+
+/* Focus visible */
+.typography-original .document-content :focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}

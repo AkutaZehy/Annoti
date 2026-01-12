@@ -1,0 +1,192 @@
+/* ============================================================================
+   Fixed Preset Styles
+   ============================================================================
+
+   Styles for the 'fixed' plain text rendering preset.
+   Features:
+   - Fixed line width (33 character units by default)
+   - CJK characters count as 1 unit, non-CJK as 0.5 unit
+   - Markdown syntax is preserved as text
+   - Optional line numbers
+   - Tab expansion
+
+   Base styles are in typography.css with CSS custom properties.
+*/
+
+/* Document container for fixed preset */
+.typography-fixed .document-viewer {
+  padding: 20px 40px;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+/* Text content wrapper */
+.typography-fixed .text-content {
+  display: inline-block;
+  min-width: 100%;
+}
+
+/* Line styling */
+.typography-fixed .text-line {
+  display: flex;
+  align-items: baseline;
+  min-height: var(--fixed-line-height);
+  line-height: var(--fixed-line-height);
+}
+
+/* Line number styling */
+.typography-fixed .line-number {
+  color: var(--fixed-line-number-color);
+  user-select: none;
+  text-align: right;
+  padding-right: 1em;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: calc(var(--fixed-font-size) * 0.9);
+}
+
+/* Line content - preserves whitespace */
+.typography-fixed .line-content {
+  white-space: pre-wrap;
+  word-break: break-all;
+  flex-shrink: 0;
+}
+
+/* Tab visualization */
+.typography-fixed .line-content .tab {
+  display: inline-block;
+  width: calc(var(--fixed-tab-size) * 0.6em);
+  border-right: 1px solid #444;
+  margin-right: calc(var(--fixed-tab-size) * 0.6em - 1px);
+}
+
+/* Whitespace dots for visible spaces */
+.typography-fixed .line-content.whitespace-visible .space {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  background: #666;
+  border-radius: 50%;
+  margin: 0 0.1em;
+}
+
+/* Empty line placeholder */
+.typography-fixed .text-line.empty {
+  height: var(--fixed-empty-line-height, 0.5em);
+}
+
+/* Paragraph markers */
+.typography-fixed .text-line.has-paragraph-marker::before {
+  content: "¶";
+  color: #555;
+  margin-right: 0.5em;
+  font-size: 0.8em;
+}
+
+/* Soft wrap indicator for long lines */
+.typography-fixed .text-line .wrap-indicator {
+  color: #666;
+  font-size: 0.7em;
+  margin-left: 0.5em;
+}
+
+/* Markdown syntax highlighting in fixed mode */
+.typography-fixed .markdown-heading {
+  color: #6caafc;
+  font-weight: bold;
+}
+
+.typography-fixed .markdown-bold {
+  font-weight: bold;
+}
+
+.typography-fixed .markdown-italic {
+  font-style: italic;
+}
+
+.typography-fixed .markdown-code {
+  font-family: var(--fixed-font-family);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0 0.2em;
+  border-radius: 2px;
+}
+
+.typography-fixed .markdown-link {
+  color: #6caafc;
+  text-decoration: none;
+}
+
+.typography-fixed .markdown-link:hover {
+  text-decoration: underline;
+}
+
+/* Selection in fixed mode */
+.typography-fixed .text-line ::selection {
+  background: rgba(108, 170, 252, 0.3);
+}
+
+/* Scrollbar styling for horizontal scroll */
+.typography-fixed .document-viewer {
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.typography-fixed .document-viewer::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.typography-fixed .document-viewer::-webkit-scrollbar-track {
+  background: #242424;
+}
+
+.typography-fixed .document-viewer::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 5px;
+}
+
+.typography-fixed .document-viewer::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Line width indicator (ruler) */
+.typography-fixed .ruler {
+  display: flex;
+  justify-content: flex-start;
+  padding: 5px 40px;
+  font-size: 10px;
+  color: #666;
+  border-bottom: 1px solid #333;
+}
+
+.typography-fixed .ruler .tick {
+  width: calc(33 * 0.6em); /* Approximate width of 33 units */
+  border-left: 1px solid #444;
+  padding-left: 2px;
+}
+
+.typography-fixed .ruler .tick.major {
+  border-left-color: #666;
+  font-weight: bold;
+}
+
+/* Status bar showing line count and position */
+.typography-fixed .status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  display: flex;
+  align-items: center;
+  padding: 0 1em;
+  font-size: 12px;
+  color: #888;
+}
+
+.typography-fixed .status-bar .position {
+  margin-left: auto;
+}
