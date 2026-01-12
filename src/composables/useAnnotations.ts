@@ -8,6 +8,10 @@ const annotations = ref<Annotation[]>([]);
 // 当前文档关联的批注文件路径
 let currentAnnotationPath: string | null = null;
 
+// 防抖保存计时器
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+const SAVE_DEBOUNCE_MS = 500;
+
 /**
  * 生成批注文件路径（document.md -> document.md.ann）
  */
@@ -16,21 +20,31 @@ const getAnnotationPath = (docPath: string): string => {
 };
 
 /**
- * 保存批注到文件
+ * 保存批注到文件（防抖）
  */
 const saveAnnotations = async () => {
   if (!currentAnnotationPath) return;
 
-  try {
-    const json = JSON.stringify(annotations.value, null, 2);
-    await invoke('write_file_content', {
-      path: currentAnnotationPath,
-      content: json
-    });
-    console.log('批注已保存:', currentAnnotationPath);
-  } catch (e) {
-    console.error('保存批注失败:', e);
+  // 清除之前的计时器
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
   }
+
+  // 设置新的防抖计时器
+  saveTimeout = setTimeout(async () => {
+    try {
+      const json = JSON.stringify(annotations.value, null, 2);
+      await invoke('write_file_content', {
+        path: currentAnnotationPath,
+        content: json
+      });
+      console.log('批注已保存:', currentAnnotationPath);
+    } catch (e) {
+      console.error('保存批注失败:', e);
+    } finally {
+      saveTimeout = null;
+    }
+  }, SAVE_DEBOUNCE_MS);
 };
 
 /**
