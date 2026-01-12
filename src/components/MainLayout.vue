@@ -1,17 +1,28 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import DocumentViewer from "./DocumentViewer.vue";
 import AnnotationList from "./AnnotationList.vue";
 import TopBar from "./TopBar.vue";
 import StickyNoteOverlay from "./StickyNoteOverlay.vue";
+import SettingsDialog from "./SettingsDialog.vue";
+import ImportExportDialog from "./ImportExportDialog.vue";
 import { useDocument } from "../composables/useDocument";
 import { useAnnotations } from "../composables/useAnnotations";
+import { useSettings } from "../composables/useSettings";
 
+const settingsDialogRef = ref<InstanceType<typeof SettingsDialog> | null>(null);
+const importExportDialogRef = ref<InstanceType<typeof ImportExportDialog> | null>(null);
 const viewerRef = ref<InstanceType<typeof DocumentViewer> | null>(null);
 
 // 从 Composable 获取文档内容
-const { docContent } = useDocument();
-const { annotations, showNote, updateNotePosition } = useAnnotations();
+const { docContent, currentFilePath } = useDocument();
+const { annotations, showNote, updateNotePosition, setDocument } = useAnnotations();
+const { init } = useSettings();
+
+// 初始化
+onMounted(async () => {
+  await init();
+});
 
 // 监听批注变化，文档加载后恢复高亮
 watch(() => annotations.value.length, async (newLen, oldLen) => {
@@ -21,6 +32,13 @@ watch(() => annotations.value.length, async (newLen, oldLen) => {
         await new Promise(resolve => setTimeout(resolve, 100));
         await viewerRef.value?.restoreHighlights();
     }
+});
+
+// 监听文档路径变化
+watch(currentFilePath, async (newPath) => {
+  if (newPath && docContent.value) {
+    await setDocument(newPath, docContent.value);
+  }
 });
 
 const onAddClick = () => {
@@ -65,12 +83,32 @@ const onWakeNote = async (payload: { annotationId: string; clickX: number; click
     // 显示便签
     await showNote(annotationId);
 };
+
+// 打开设置
+const onOpenSettings = () => {
+    settingsDialogRef.value?.open();
+};
+
+// 打开导入对话框
+const onImportAnnotation = () => {
+    importExportDialogRef.value?.open('import');
+};
+
+// 打开导出全部对话框
+const onExportAll = () => {
+    importExportDialogRef.value?.open('export');
+};
 </script>
 
 <template>
     <div class="layout">
         <!-- 使用新的 TopBar 组件 -->
-        <TopBar @add-note="onAddClick" />
+        <TopBar
+            @add-note="onAddClick"
+            @open-settings="onOpenSettings"
+            @import-annotation="onImportAnnotation"
+            @export-all="onExportAll"
+        />
 
         <main class="content-wrapper">
             <section class="pane reader-pane viewer-pane">
@@ -88,6 +126,12 @@ const onWakeNote = async (payload: { annotationId: string; clickX: number; click
                 <AnnotationList @locate="onLocateRequest" @delete="onDeleteAnnotation" />
             </aside>
         </main>
+
+        <!-- Settings 对话框 -->
+        <SettingsDialog ref="settingsDialogRef" />
+
+        <!-- 导入/导出对话框 -->
+        <ImportExportDialog ref="importExportDialogRef" />
     </div>
 </template>
 

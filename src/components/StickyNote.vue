@@ -170,7 +170,7 @@ const startResize = (e: MouseEvent) => {
 // 保存笔记
 const saveNote = async () => {
     isEditing.value = false;
-    await updateAnnotation(props.annotation.id, localNote.value);
+    await updateAnnotation(props.annotation.id, { note: localNote.value });
 };
 
 // 关闭便签

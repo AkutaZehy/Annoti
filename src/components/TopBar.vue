@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { useDocument } from "../composables/useDocument";
+import { useAnnotations } from "../composables/useAnnotations";
 
 const emit = defineEmits<{
     (e: "add-note"): void;
+    (e: "open-settings"): void;
+    (e: "import-annotation"): void;
+    (e: "export-all"): void;
 }>();
 
 const { openFile, currentFilePath } = useDocument();
+const { annotations } = useAnnotations();
 
 // 简单的计算属性，只显示文件名
 const fileName = computed(() => {
@@ -27,6 +32,15 @@ import { computed } from "vue";
         </div>
 
         <div class="actions">
+            <button class="btn-secondary" @click="emit('import-annotation')" title="导入 .annpkg">
+                📥 导入
+            </button>
+            <button class="btn-secondary" @click="emit('export-all')" title="导出全部" :disabled="annotations.length === 0">
+                📤 导出全部
+            </button>
+            <button class="btn-secondary" @click="emit('open-settings')" title="Settings">
+                ⚙️
+            </button>
             <button class="btn-secondary" @click="openFile">📂 打开文件</button>
             <button class="btn-primary" @click="emit('add-note')">
                 + 添加批注
@@ -61,7 +75,7 @@ import { computed } from "vue";
 }
 .actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
 }
 .btn-primary {
     background: #646cff;
@@ -80,11 +94,19 @@ import { computed } from "vue";
     background: #333;
     color: #ccc;
     border: 1px solid #555;
-    padding: 8px 16px;
+    padding: 8px 12px;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 16px;
 }
 .btn-secondary:hover {
     background: #444;
+}
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.btn-secondary:disabled:hover {
+    background: #333;
 }
 </style>
