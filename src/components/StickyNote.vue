@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from "vue";
+import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import type { Annotation } from "../types";
 import { useAnnotations } from "../composables/useAnnotations";
 
@@ -19,6 +19,10 @@ const { updateAnnotation, updateNotePosition, updateNoteSize } = useAnnotations(
 const noteRef = ref<HTMLElement | null>(null);
 const isDragging = ref(false);
 const isResizing = ref(false);
+
+// 用于清理的事件处理函数引用
+const resizeMoveHandler = ref<((e: MouseEvent) => void) | null>(null);
+const resizeStopHandler = ref<(() => void) | null>(null);
 
 // 拖动起始状态
 let initialMouseX = 0;
@@ -114,6 +118,18 @@ const stopDrag = () => {
     document.removeEventListener('mouseup', stopDrag);
 };
 
+// 组件卸载时清理事件监听器，防止内存泄漏
+onUnmounted(() => {
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', stopDrag);
+    if (resizeMoveHandler.value) {
+        document.removeEventListener('mousemove', resizeMoveHandler.value);
+    }
+    if (resizeStopHandler.value) {
+        document.removeEventListener('mouseup', resizeStopHandler.value);
+    }
+});
+
 // 开始调整大小
 const startResize = (e: MouseEvent) => {
     emit("bringToTop", props.annotation.id);
@@ -139,7 +155,13 @@ const startResize = (e: MouseEvent) => {
         isResizing.value = false;
         document.removeEventListener('mousemove', onResize);
         document.removeEventListener('mouseup', stopResize);
+        resizeMoveHandler.value = null;
+        resizeStopHandler.value = null;
     };
+
+    // 保存引用以便清理
+    resizeMoveHandler.value = onResize;
+    resizeStopHandler.value = stopResize;
 
     document.addEventListener('mousemove', onResize);
     document.addEventListener('mouseup', stopResize);
