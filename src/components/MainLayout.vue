@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import DocumentViewer from "./DocumentViewer.vue";
 import AnnotationList from "./AnnotationList.vue";
 import TopBar from "./TopBar.vue";
+import StickyNoteOverlay from "./StickyNoteOverlay.vue";
 import { useDocument } from "../composables/useDocument";
 import { useAnnotations } from "../composables/useAnnotations";
 
@@ -10,7 +11,7 @@ const viewerRef = ref<InstanceType<typeof DocumentViewer> | null>(null);
 
 // 从 Composable 获取文档内容
 const { docContent } = useDocument();
-const { annotations } = useAnnotations();
+const { annotations, showNote, updateNotePosition } = useAnnotations();
 
 // 监听批注变化，文档加载后恢复高亮
 watch(() => annotations.value.length, async (newLen, oldLen) => {
@@ -33,6 +34,37 @@ const onLocateRequest = (domId: string) => {
 const onDeleteAnnotation = (annotation: { id: string; anchor: any[] }) => {
     viewerRef.value?.removeHighlight(annotation.id);
 };
+
+// 唤醒便签：点击高亮时调用（snap-back）
+const onWakeNote = async (payload: { annotationId: string; clickX: number; clickY: number }) => {
+    const { annotationId, clickX, clickY } = payload;
+    const anno = annotations.value.find(a => a.id === annotationId);
+    if (!anno) return;
+
+    // 获取viewer容器
+    const viewerPane = document.querySelector('.viewer-pane') as HTMLElement;
+    if (!viewerPane) return;
+
+    const viewerRect = viewerPane.getBoundingClientRect();
+
+    const offsetX = 15;
+    const offsetY = 20;
+
+    // 使用实际点击位置
+    const x = clickX - viewerRect.left + offsetX;
+
+    // Y: viewport坐标 + scrollTop = content坐标
+    const y = clickY - viewerRect.top + viewerPane.scrollTop + offsetY;
+
+    // 确保不超出屏幕右侧
+    const maxX = window.innerWidth * 0.8 - anno.noteSize.width;
+    const constrainedX = Math.max(0, Math.min(x, maxX));
+
+    await updateNotePosition(annotationId, constrainedX, y);
+
+    // 显示便签
+    await showNote(annotationId);
+};
 </script>
 
 <template>
@@ -41,9 +73,15 @@ const onDeleteAnnotation = (annotation: { id: string; anchor: any[] }) => {
         <TopBar @add-note="onAddClick" />
 
         <main class="content-wrapper">
-            <section class="pane reader-pane">
-                <!-- 绑定 docContent -->
-                <DocumentViewer ref="viewerRef" :content="docContent" />
+            <section class="pane reader-pane viewer-pane">
+                <!-- 绑定 docContent，传递 wakeNote 事件 -->
+                <DocumentViewer
+                    ref="viewerRef"
+                    :content="docContent"
+                    @wake-note="onWakeNote"
+                />
+                <!-- 便签覆盖层 - 在阅读区内，随滚动移动 -->
+                <StickyNoteOverlay class="note-overlay-in-viewer" />
             </section>
 
             <aside class="pane sidebar-pane">
@@ -52,6 +90,13 @@ const onDeleteAnnotation = (annotation: { id: string; anchor: any[] }) => {
         </main>
     </div>
 </template>
+
+<style>
+/* 全局样式，不使用scoped以确保覆盖任何位置 */
+.sticky-note {
+    position: absolute !important;
+}
+</style>
 
 <style scoped>
 /* 样式与之前相同，TopBar 样式已移入组件内，此处可删除 .header 相关样式 */
@@ -73,6 +118,21 @@ const onDeleteAnnotation = (annotation: { id: string; anchor: any[] }) => {
     flex: 2;
     border-right: 1px solid #333;
     background-color: #242424;
+    position: relative;
+}
+.viewer-pane {
+    overflow-y: auto;
+}
+.note-overlay-in-viewer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+.note-overlay-in-viewer :deep(.sticky-note) {
+    pointer-events: auto;
 }
 .sidebar-pane {
     flex: 1;

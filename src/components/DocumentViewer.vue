@@ -4,6 +4,12 @@ import { marked } from "marked";
 import { useAnnotations } from "../composables/useAnnotations";
 import type { Annotation, AnnotationAnchor } from "../types";
 
+const emit = defineEmits<{
+    (e: "wakeNote", payload: { annotationId: string; clickX: number; clickY: number }): void;
+}>();
+
+// 添加点击高亮的事件处理
+
 const props = defineProps<{
     content: string;
 }>();
@@ -137,6 +143,10 @@ const handleHighlight = () => {
         span.style.cursor = "pointer";
         span.style.borderBottom = "2px solid gold";
         span.dataset.groupId = annotationId;
+        span.onclick = (e) => {
+            e.stopPropagation();
+            emit("wakeNote", { annotationId, clickX: e.clientX, clickY: e.clientY });
+        };
 
         if (index === 0) {
             span.id = annotationId;
@@ -298,6 +308,10 @@ const restoreSingleHighlight = (
         span.style.cursor = "pointer";
         span.style.borderBottom = "2px solid gold";
         span.dataset.groupId = groupId;
+        span.onclick = (e) => {
+            e.stopPropagation();
+            emit("wakeNote", { annotationId: groupId, clickX: e.clientX, clickY: e.clientY });
+        };
 
         if (isFirst) {
             span.id = groupId;

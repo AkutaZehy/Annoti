@@ -66,9 +66,25 @@ const loadAnnotations = async (docPath: string): Promise<Annotation[] | null> =>
         typeof (anch as any).startOffset === 'number' &&
         typeof (anch as any).endOffset === 'number'
       ) &&
-      typeof a.createdAt === 'number'
+      typeof a.createdAt === 'number' &&
+      // 便签视觉状态字段验证（可选，用于向后兼容）
+      (a.noteVisible === undefined || typeof a.noteVisible === 'boolean') &&
+      (a.notePosition === undefined ||
+        (typeof a.notePosition === 'object' &&
+          typeof a.notePosition.x === 'number' &&
+          typeof a.notePosition.y === 'number')) &&
+      (a.noteSize === undefined ||
+        (typeof a.noteSize === 'object' &&
+          typeof a.noteSize.width === 'number' &&
+          typeof a.noteSize.height === 'number'))
     )) {
-      return parsed as Annotation[];
+      // 迁移：确保旧数据有默认的便签视觉状态
+      return (parsed as Annotation[]).map(a => ({
+        ...a,
+        noteVisible: a.noteVisible ?? false,
+        notePosition: a.notePosition ?? { x: 0, y: 0 },
+        noteSize: a.noteSize ?? { width: 280, height: 180 }
+      }));
     } else {
       return null; // 数据损坏
     }
@@ -140,6 +156,10 @@ export function useAnnotations() {
       text,
       anchor,
       createdAt: Date.now(),
+      // 便签视觉状态默认值
+      noteVisible: false,
+      notePosition: { x: 0, y: 0 },
+      noteSize: { width: 280, height: 180 },
     };
     annotations.value.push(newAnno);
 
@@ -193,6 +213,66 @@ export function useAnnotations() {
     return deleted;
   };
 
+  /**
+   * 显示便签
+   */
+  const showNote = async (id: string): Promise<boolean> => {
+    const index = annotations.value.findIndex(a => a.id === id);
+    if (index === -1) return false;
+
+    annotations.value[index].noteVisible = true;
+    await saveAnnotations();
+    return true;
+  };
+
+  /**
+   * 隐藏便签
+   */
+  const hideNote = async (id: string): Promise<boolean> => {
+    const index = annotations.value.findIndex(a => a.id === id);
+    if (index === -1) return false;
+
+    annotations.value[index].noteVisible = false;
+    await saveAnnotations();
+    return true;
+  };
+
+  /**
+   * 更新便签位置
+   */
+  const updateNotePosition = async (id: string, x: number, y: number): Promise<boolean> => {
+    const index = annotations.value.findIndex(a => a.id === id);
+    if (index === -1) return false;
+
+    annotations.value[index].notePosition = { x, y };
+    await saveAnnotations();
+    return true;
+  };
+
+  /**
+   * 更新便签尺寸
+   */
+  const updateNoteSize = async (id: string, width: number, height: number): Promise<boolean> => {
+    const index = annotations.value.findIndex(a => a.id === id);
+    if (index === -1) return false;
+
+    annotations.value[index].noteSize = { width, height };
+    await saveAnnotations();
+    return true;
+  };
+
+  /**
+   * 重置便签位置到默认位置（高亮旁边）
+   */
+  const resetNotePosition = async (id: string): Promise<boolean> => {
+    const index = annotations.value.findIndex(a => a.id === id);
+    if (index === -1) return false;
+
+    annotations.value[index].notePosition = { x: 0, y: 0 };
+    await saveAnnotations();
+    return true;
+  };
+
   return {
     annotations,
     setDocument,
@@ -200,6 +280,11 @@ export function useAnnotations() {
     getAnnotationById,
     updateAnnotation,
     deleteAnnotation,
+    showNote,
+    hideNote,
+    updateNotePosition,
+    updateNoteSize,
+    resetNotePosition,
     forceSave
   };
 }
