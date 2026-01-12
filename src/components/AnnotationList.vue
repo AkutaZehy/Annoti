@@ -135,10 +135,10 @@ const isEditing = (id: string) => editingId.value === id;
 .title {
     margin-top: 0;
     font-size: 1.2rem;
-    color: #fff;
+    color: var(--text-primary, #fff);
 }
 .card {
-    background: #333;
+    background: var(--bg-tertiary, #333);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
@@ -147,11 +147,11 @@ const isEditing = (id: string) => editingId.value === id;
     transition: all 0.2s;
 }
 .card:hover {
-    background: #3c3c3c;
-    border-color: #666;
+    background: var(--bg-secondary, #3c3c3c);
+    border-color: var(--border, #666);
 }
 .card.is-editing {
-    border-color: #4a9eff;
+    border-color: var(--accent, #4a9eff);
     cursor: default;
 }
 .card-header {
@@ -167,7 +167,7 @@ const isEditing = (id: string) => editingId.value === id;
 }
 .card-user {
     font-size: 0.85rem;
-    color: #ffd700;
+    color: var(--accent, #ffd700);
     font-weight: 500;
 }
 .card-actions {
@@ -186,22 +186,22 @@ const isEditing = (id: string) => editingId.value === id;
     padding: 4px;
     cursor: pointer;
     border-radius: 4px;
-    color: #888;
+    color: var(--text-tertiary, #888);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
 }
 .btn-icon:hover {
-    background: #555;
-    color: #fff;
+    background: var(--bg-tertiary, #555);
+    color: var(--text-primary, #fff);
 }
 .delete-btn:hover {
     color: #ff6b6b;
 }
 .card-quote {
     font-size: 0.85rem;
-    color: #888;
+    color: var(--text-secondary, #888);
     font-style: italic;
     margin-bottom: 8px;
     display: -webkit-box;
@@ -211,21 +211,21 @@ const isEditing = (id: string) => editingId.value === id;
 }
 .card-note {
     font-size: 0.9rem;
-    color: #ddd;
+    color: var(--text-primary, #ddd);
     line-height: 1.5;
     padding: 8px;
-    background: #2a2a2a;
+    background: var(--bg-secondary, #2a2a2a);
     border-radius: 4px;
     white-space: pre-wrap;
     word-break: break-word;
 }
 .card-note.empty-note {
-    color: #666;
+    color: var(--text-tertiary, #666);
     font-style: italic;
 }
 .card-time {
     font-size: 0.75rem;
-    color: #666;
+    color: var(--text-tertiary, #666);
 }
 .note-edit {
     margin-top: 8px;
@@ -233,10 +233,10 @@ const isEditing = (id: string) => editingId.value === id;
 .note-input {
     width: 100%;
     padding: 8px;
-    border: 1px solid #555;
+    border: 1px solid var(--border, #555);
     border-radius: 4px;
-    background: #2a2a2a;
-    color: #ddd;
+    background: var(--bg-secondary, #2a2a2a);
+    color: var(--text-primary, #ddd);
     font-size: 0.9rem;
     resize: vertical;
     font-family: inherit;
@@ -244,7 +244,7 @@ const isEditing = (id: string) => editingId.value === id;
 }
 .note-input:focus {
     outline: none;
-    border-color: #4a9eff;
+    border-color: var(--accent, #4a9eff);
 }
 .edit-actions {
     display: flex;
@@ -261,21 +261,21 @@ const isEditing = (id: string) => editingId.value === id;
     transition: all 0.2s;
 }
 .save-btn {
-    background: #4a9eff;
-    color: #fff;
+    background: var(--accent, #4a9eff);
+    color: var(--btn-primary-text, #fff);
 }
 .save-btn:hover {
-    background: #3a8eef;
+    background: var(--accent-hover, #3a8eef);
 }
 .cancel-btn {
     background: transparent;
-    color: #888;
+    color: var(--text-secondary, #888);
 }
 .cancel-btn:hover {
-    color: #ddd;
+    color: var(--text-primary, #ddd);
 }
 .empty-state {
-    color: #666;
+    color: var(--text-tertiary, #666);
     text-align: center;
     margin-top: 50px;
 }

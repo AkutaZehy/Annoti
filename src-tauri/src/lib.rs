@@ -227,6 +227,58 @@ async fn get_db_path() -> Result<String, String> {
     Ok(db::get_db_path().to_string_lossy().to_string())
 }
 
+// ============ UI 设置 ============
+
+#[tauri::command]
+async fn load_ui_settings() -> Result<Option<String>, String> {
+    let settings = db::load_ui_settings().map_err(|e| e.to_string())?;
+    match settings {
+        Some(s) => {
+            let json = serde_json::to_string_pretty(&s).map_err(|e| e.to_string())?;
+            Ok(Some(json))
+        }
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
+async fn save_ui_settings(settings_json: String) -> Result<(), String> {
+    let settings: serde_json::Value = serde_json::from_str(&settings_json)
+        .map_err(|e| e.to_string())?;
+    db::save_ui_settings(&settings).map_err(|e| e.to_string())
+}
+
+// ============ 排版配置 ============
+
+#[tauri::command]
+async fn get_typography_path() -> Result<String, String> {
+    Ok(db::get_typography_path().to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn load_typography_config() -> Result<String, String> {
+    let path = db::get_typography_path();
+    if path.exists() {
+        let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        Ok(content)
+    } else {
+        // Return default config
+        Ok(String::new())
+    }
+}
+
+#[tauri::command]
+async fn save_typography_config(content: String) -> Result<(), String> {
+    let path = db::get_typography_path();
+    // Ensure parent directory exists
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let mut file = File::create(&path).map_err(|e| e.to_string())?;
+    file.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -256,7 +308,12 @@ pub fn run() {
             save_settings,
             get_settings_path,
             open_path,
-            get_db_path
+            get_db_path,
+            load_ui_settings,
+            save_ui_settings,
+            get_typography_path,
+            load_typography_config,
+            save_typography_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -15,10 +15,12 @@ const visibleNotes = computed(() =>
 );
 
 // 计算z-index（用于排序）
-const getZIndex = (annotation: Annotation): number => {
-    // 使用注释中的位置信息生成稳定的z-index基础
-    // 再加上动态的层级偏移
-    return annotation.notePosition.y + maxZIndex.value;
+const getZIndex = (_annotation: Annotation): number => {
+    // 使用固定的基础z-index，加上动态层级偏移
+    // 限制最大值在 400 以下，避免超过 dialog 的 z-index (1000)
+    const baseZIndex = 100;
+    const dynamicZIndex = Math.min(maxZIndex.value, 300);
+    return baseZIndex + dynamicZIndex;
 };
 
 // 关闭便签
@@ -54,7 +56,7 @@ const bringToTop = (_id: string) => {
     width: 100%;
     min-height: 100%;
     pointer-events: none;
-    /* 移除 overflow:hidden，让便签可以出现在任何位置 */
+    /* 随内容滚动，position: absolute 相对于内容区域 */
 }
 
 /* 让便签能够接收鼠标事件 */

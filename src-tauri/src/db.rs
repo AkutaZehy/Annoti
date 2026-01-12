@@ -49,7 +49,6 @@ pub struct AnnotationRecord {
 pub struct SettingsRecord {
     pub version: String,
     pub user: UserSettingsRecord,
-    pub storage: StorageSettingsRecord,
     pub editor: EditorSettingsRecord,
     pub export: ExportSettingsRecord,
     pub i18n: I18nSettingsRecord,
@@ -60,12 +59,6 @@ pub struct UserSettingsRecord {
     pub id: String,
     pub name: String,
     pub can_reroll: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StorageSettingsRecord {
-    pub mode: String,
-    pub path: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -941,10 +934,6 @@ pub fn load_settings() -> Result<SettingsRecord, String> {
                 name: "admin".to_string(),
                 can_reroll: true,
             },
-            storage: StorageSettingsRecord {
-                mode: "sqlite".to_string(),
-                path: "auto".to_string(),
-            },
             editor: EditorSettingsRecord {
                 default_highlight_color: "#ffd700".to_string(),
                 default_highlight_type: "underline".to_string(),
@@ -980,4 +969,40 @@ pub fn update_user_name_in_settings(new_name: &str) -> Result<(), String> {
     settings.user.name = new_name.to_string();
     save_settings(&settings)?;
     Ok(())
+}
+
+// ============ UI 设置操作 ============
+
+pub fn get_ui_settings_path() -> std::path::PathBuf {
+    let mut path = get_app_data_dir();
+    fs::create_dir_all(&path).ok();
+    path.push("ui_settings.json");
+    path
+}
+
+pub fn load_ui_settings() -> Result<Option<serde_json::Value>, String> {
+    let path = get_ui_settings_path();
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&content).map_err(|e| e.to_string())
+}
+
+pub fn save_ui_settings(settings: &serde_json::Value) -> Result<(), String> {
+    let path = get_ui_settings_path();
+    let content = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ============ 排版配置操作 ============
+
+pub fn get_typography_path() -> std::path::PathBuf {
+    let mut path = get_app_data_dir();
+    fs::create_dir_all(&path).ok();
+    path.push("typography.yaml");
+    path
 }

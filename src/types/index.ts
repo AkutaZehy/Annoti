@@ -66,11 +66,6 @@ export interface UserSettingsRecord {
   can_reroll: boolean;
 }
 
-export interface StorageSettingsRecord {
-  mode: string;
-  path: string;
-}
-
 export interface EditorSettingsRecord {
   default_highlight_color: string;
   default_highlight_type: string;
@@ -90,7 +85,6 @@ export interface I18nSettingsRecord {
 export interface SettingsRecord {
   version: string;
   user: UserSettingsRecord;
-  storage: StorageSettingsRecord;
   editor: EditorSettingsRecord;
   export: ExportSettingsRecord;
   i18n: I18nSettingsRecord;
@@ -105,4 +99,15 @@ export interface AnnotationPackage {
     checksum: string;
   };
   annotations: AnnotationRecord[];  // 支持批量导入
+}
+
+// UI 设置
+export interface UISettingsRecord {
+  theme: 'light' | 'dark';
+  window_width: number;
+  window_height: number;
+  window_maximized: boolean;
+  sidebar_visible: boolean;
+  sidebar_width: number;  // 百分比 0-100
+  sidebar_experimental: boolean;  // 是否解锁扩展范围
 }

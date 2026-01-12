@@ -105,6 +105,9 @@ export interface RenderedLine {
   /** Original text content */
   content: string;
 
+  /** HTML escaped content for display */
+  html: string;
+
   /** Visual width in units */
   width: number;
 
@@ -289,9 +292,11 @@ export class TypographyRenderer {
     isEmpty: boolean,
     isSoftWrapped: boolean
   ): RenderedLine {
+    const html = this.escapeHtml(content);
     return {
       number: -1, // Will be overwritten by caller
       content,
+      html,
       width: this.calculateWidth(content),
       isEmpty,
       isSoftWrapped,
@@ -382,10 +387,11 @@ export function createRendererFromPreset(preset: FixedPreset): TypographyRendere
 }
 
 /**
- * Get active preset from config
+ * Get active preset from config (pro mode uses original preset for compatibility)
  */
 export function getActivePreset(config: TypographyConfig): OriginalPreset | FixedPreset {
-  return config.presets[config.preset] as OriginalPreset | FixedPreset;
+  const presetName = config.preset === 'pro' ? 'original' : config.preset;
+  return config.presets[presetName] as OriginalPreset | FixedPreset;
 }
 
 /**

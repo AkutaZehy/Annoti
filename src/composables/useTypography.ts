@@ -43,8 +43,6 @@ const isLoading = ref(false);
 const isSaving = ref(false);
 const error = ref<string | null>(null);
 
-const TYPOGRAPHY_FILE = 'typography.yaml';
-
 // ============================================================================
 // Computed Properties
 // ============================================================================
@@ -62,9 +60,11 @@ export function useTypography() {
   /** Check if current preset is 'fixed' mode */
   const isFixedMode = computed(() => config.value.preset === 'fixed');
 
-  /** Get the active preset configuration */
+  /** Get the active preset configuration (pro mode uses original preset for compatibility) */
   const activePreset = computed<OriginalPreset | FixedPreset>(() => {
-    return config.value.presets[config.value.preset];
+    // pro mode doesn't have a preset - it uses custom CSS
+    const presetName = config.value.preset === 'pro' ? 'original' : config.value.preset;
+    return config.value.presets[presetName];
   });
 
   /** Get original preset */
@@ -98,7 +98,6 @@ export function useTypography() {
       '--list-padding-left': p.lists.padding_left,
       '--list-bullet-style': p.lists.bullet_style,
       '--code-font-family': p.code.font_family,
-      '--code-background': p.code.background,
       '--code-border-radius': p.code.border_radius,
       '--blockquote-border-left': p.blockquote.border_left,
       '--blockquote-padding-left': p.blockquote.padding_left,
@@ -167,12 +166,13 @@ export function useTypography() {
     error.value = null;
 
     try {
-      // Check if file exists
-      const exists = await invoke<boolean>('file_exists', { path: TYPOGRAPHY_FILE });
+      // Check if file exists by getting the path and checking
+      const path = await invoke<string>('get_typography_path');
+      const exists = await invoke<boolean>('file_exists', { path });
 
       if (exists) {
-        // Read the file
-        const content = await invoke<string>('read_file_content', { path: TYPOGRAPHY_FILE });
+        // Read the file using the proper path
+        const content = await invoke<string>('load_typography_config');
         const parsed = parseYamlConfig(content);
         config.value = mergeTypographyConfig(parsed, config.value);
       } else {
@@ -199,10 +199,7 @@ export function useTypography() {
 
     try {
       const yaml = serializeToYaml(config.value);
-      await invoke('write_file_content', {
-        path: TYPOGRAPHY_FILE,
-        content: yaml,
-      });
+      await invoke('save_typography_config', { content: yaml });
     } catch (err) {
       error.value = `Failed to save typography config: ${err}`;
       console.error(error.value);
@@ -213,14 +210,14 @@ export function useTypography() {
 
   /**
    * Update config partially
+   * Note: CSS is applied via watcher, not here
    */
   async function updateConfig(updates: Partial<TypographyConfig>): Promise<void> {
     // Merge updates
     const newConfig = mergeTypographyConfig(updates, config.value);
     config.value = newConfig;
 
-    // Apply CSS variables
-    applyCssVariables(allCssVars.value);
+    // CSS variables will be applied by the watcher
 
     // Save to file
     await saveConfig();
@@ -228,6 +225,7 @@ export function useTypography() {
 
   /**
    * Switch preset
+   * 直接更新配置（通过 watcher 应用 CSS），只在用户确认后调用
    */
   async function switchPreset(preset: PresetName): Promise<void> {
     await updateConfig({ preset });
@@ -320,12 +318,66 @@ export function useTypography() {
       const lines = yaml.split('\n');
       let currentSection: Record<string, unknown> | null = null;
       let sectionName = '';
+      let customCssLines: string[] = [];
+      let inCustomCssBlock = false;
 
       for (const line of lines) {
         const trimmed = line.trim();
 
-        // Skip comments and empty lines
-        if (!trimmed || trimmed.startsWith('#')) continue;
+        // Check if entering custom_css block (YAML multiline string)
+        if (trimmed.startsWith('custom_css:')) {
+          inCustomCssBlock = true;
+          customCssLines = [];
+          continue;
+        }
+
+        // Handle content inside custom_css block
+        if (inCustomCssBlock) {
+          // Check if this is a new top-level field (not continuation of custom_css)
+          if (/^\w+:\s*/.test(trimmed) && !trimmed.startsWith('  ') && !trimmed.startsWith('\t')) {
+            // End of custom_css block, save accumulated lines
+            if (customCssLines.length > 0) {
+              result.custom_css = customCssLines.join('\n');
+            }
+            inCustomCssBlock = false;
+            customCssLines = [];
+
+            // Parse this new field
+            const match = trimmed.match(/^(\w+):\s*(.*)$/);
+            if (match) {
+              const key = match[1];
+              const valueStr = match[2];
+              let value: string | number | boolean = valueStr;
+
+              if ((valueStr.startsWith('"') && valueStr.endsWith('"')) ||
+                  (valueStr.startsWith("'") && valueStr.endsWith("'"))) {
+                value = valueStr.slice(1, -1);
+              } else if (valueStr === 'true') {
+                value = true;
+              } else if (valueStr === 'false') {
+                value = false;
+              } else if (/^-?\d+$/.test(valueStr)) {
+                value = parseInt(valueStr, 10);
+              } else if (/^-?\d+\.\d+$/.test(valueStr)) {
+                value = parseFloat(valueStr);
+              } else if (valueStr === '') {
+                continue;
+              }
+
+              result[key] = value;
+            }
+            continue;
+          }
+
+          // Continuation of custom_css block (indented lines)
+          if (trimmed || customCssLines.length > 0) {
+            customCssLines.push(line); // Keep original line (without leading spaces)
+          }
+          continue;
+        }
+
+        // Skip empty lines and pure comments (starting with # after optional spaces)
+        if (!trimmed || /^#/.test(trimmed)) continue;
 
         // Check for section headers (presets.original / presets.fixed)
         if (trimmed.startsWith('presets:')) {
@@ -366,6 +418,8 @@ export function useTypography() {
             value = parseInt(valueStr, 10);
           } else if (/^-?\d+\.\d+$/.test(valueStr)) {
             value = parseFloat(valueStr);
+          } else if (valueStr === '') {
+            continue;
           }
 
           if (currentSection) {
@@ -374,6 +428,11 @@ export function useTypography() {
             result[key] = value;
           }
         }
+      }
+
+      // Handle custom_css block at end of file
+      if (inCustomCssBlock && customCssLines.length > 0) {
+        result.custom_css = customCssLines.join('\n');
       }
 
       return result as Partial<TypographyConfig>;
@@ -385,7 +444,7 @@ export function useTypography() {
     let yaml = '';
 
     yaml += `# Typography Configuration\n`;
-    yaml += `# Generated by Annoti-t\n\n`;
+    yaml += `# Generated by Annoti\n\n`;
 
     yaml += `preset: ${cfg.preset}\n`;
     yaml += `use_css_override: ${cfg.use_css_override}\n`;

@@ -107,15 +107,15 @@ defineProps<{
 }
 
 .text-viewer::-webkit-scrollbar-track {
-  background: #242424;
+  background: var(--bg-primary, #242424);
 }
 
 .text-viewer::-webkit-scrollbar-thumb {
-  background: #444;
+  background: var(--border, #444);
   border-radius: 5px;
 }
 
 .text-viewer::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--border-light, #555);
 }
 </style>

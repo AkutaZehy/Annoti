@@ -219,23 +219,31 @@ const closeNote = () => {
 <style scoped>
 .sticky-note {
     position: absolute;
-    background: #fff9c4;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    background: var(--sticky-bg, #fff9c4);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     user-select: none;
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.sticky-note:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .note-header {
-    background: #f9a825;
-    padding: 8px 12px;
+    background: var(--sticky-header, #f9a825);
+    padding: 12px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     cursor: grab;
     flex-shrink: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .note-header:active {
@@ -243,31 +251,45 @@ const closeNote = () => {
 }
 
 .note-title {
-    font-size: 0.85rem;
-    font-weight: bold;
-    color: #333;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sticky-text, #333);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.note-title::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
 }
 
 .close-btn {
-    background: transparent;
+    background: rgba(0, 0, 0, 0.08);
     border: none;
-    font-size: 1.2rem;
-    color: #333;
+    font-size: 1.1rem;
+    color: var(--sticky-text, #333);
     cursor: pointer;
-    padding: 0 4px;
+    padding: 6px 10px;
     line-height: 1;
+    border-radius: 6px;
     opacity: 0.7;
-    transition: opacity 0.2s;
+    transition: all 0.2s ease;
 }
 
 .close-btn:hover {
     opacity: 1;
+    background: rgba(0, 0, 0, 0.15);
+    transform: scale(1.05);
 }
 
 .note-content {
     flex: 1;
-    padding: 8px;
+    padding: 16px;
     overflow: hidden;
     display: flex;
 }
@@ -278,29 +300,48 @@ const closeNote = () => {
     border: none;
     background: transparent;
     resize: none;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-family: inherit;
-    color: #333;
-    line-height: 1.5;
+    color: var(--sticky-text, #333);
+    line-height: 1.6;
     outline: none;
+    letter-spacing: 0.01em;
 }
 
 .note-textarea::placeholder {
-    color: #999;
+    color: rgba(0, 0, 0, 0.4);
 }
 
 .resize-handle {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
     cursor: se-resize;
-    background: linear-gradient(135deg, transparent 50%, #f9a825 50%);
-    opacity: 0.6;
+    background: linear-gradient(135deg, transparent 60%, var(--sticky-header, #f9a825) 60%);
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+    border-top-left-radius: 8px;
 }
 
 .resize-handle:hover {
-    opacity: 1;
+    opacity: 0.8;
+}
+
+/* Card animation */
+.sticky-note {
+    animation: cardAppear 0.2s ease-out;
+}
+
+@keyframes cardAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 </style>

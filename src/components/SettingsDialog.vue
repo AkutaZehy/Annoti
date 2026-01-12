@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useSettings } from '../composables/useSettings';
+import { useSidebar } from '../composables/useSidebar';
 import TypographySettings from './TypographySettings.vue';
 import type { SettingsRecord } from '../types';
 
 const { settings, loadSettings, saveSettings, openSettingsDir, currentUser, updateUserName, rerollUserName } = useSettings();
+const { sidebarExperimental, toggleExperimental } = useSidebar();
 
 const visible = ref(false);
 const typographyVisible = ref(false);
+const typographySettingsRef = ref<InstanceType<typeof TypographySettings> | null>(null);
 const editingSettings = ref<SettingsRecord | null>(null);
 const newUserName = ref('');
 const showRerollConfirm = ref(false);
 const newRandomName = ref('');
 const isLoading = ref(false);
+const showTypographyCloseWarning = ref(false);
 
 // 打开弹窗
 const open = async () => {
@@ -74,9 +78,36 @@ const openTypographySettings = () => {
   typographyVisible.value = true;
 };
 
-// 关闭排版设置
-const closeTypographySettings = () => {
+// 关闭排版设置（检查是否有未保存更改）
+const onCloseTypographySettings = () => {
+  // 检查是否有未保存的更改
+  if (typographySettingsRef.value?.checkHasPendingChanges()) {
+    showTypographyCloseWarning.value = true;
+  } else {
+    typographyVisible.value = false;
+  }
+};
+
+// 确认关闭排版设置（放弃更改）
+const confirmCloseTypographySettings = () => {
+  typographySettingsRef.value?.discardAndClose();
+  showTypographyCloseWarning.value = false;
   typographyVisible.value = false;
+};
+
+// 取消关闭
+const cancelCloseTypographySettings = () => {
+  showTypographyCloseWarning.value = false;
+};
+
+// Typography 内部放弃更改（不清除对话框状态）
+const onDiscardTypographyChanges = () => {
+  // 保持对话框打开，只通知内部放弃
+};
+
+// 切换实验性模式
+const toggleExperimentalMode = async () => {
+  await toggleExperimental();
 };
 
 // 监听设置加载
@@ -131,42 +162,11 @@ defineExpose({ open, close });
                 v-model="editingSettings.editor.default_highlight_color"
               />
             </div>
-            <div class="form-group">
-              <label>默认高亮类型</label>
-              <select v-model="editingSettings.editor.default_highlight_type">
-                <option value="underline">下划线</option>
-                <option value="square">方形</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>字体大小</label>
-              <input
-                type="number"
-                v-model.number="editingSettings.editor.font_size"
-                min="12"
-                max="32"
-              />
-            </div>
-            <div class="form-group">
-              <label>字体</label>
-              <input
-                type="text"
-                v-model="editingSettings.editor.font_family"
-                placeholder="system-ui"
-              />
-            </div>
           </section>
 
           <!-- 导出设置 -->
           <section class="settings-section" v-if="editingSettings">
             <h3>导出</h3>
-            <div class="form-group">
-              <label>默认格式</label>
-              <select v-model="editingSettings.export.default_format">
-                <option value="html">HTML (只读)</option>
-                <option value="pdf">PDF</option>
-              </select>
-            </div>
             <div class="form-group checkbox">
               <label>
                 <input
@@ -184,23 +184,13 @@ defineExpose({ open, close });
             <div class="form-group">
               <select v-model="editingSettings.i18n.language">
                 <option value="zh-CN">简体中文</option>
-                <option value="en-US">English (US)</option>
-                <option value="zh-TW">繁體中文</option>
-                <option value="ja-JP">日本語</option>
               </select>
             </div>
           </section>
 
           <!-- 存储设置 -->
-          <section class="settings-section" v-if="editingSettings">
+          <section class="settings-section">
             <h3>存储</h3>
-            <div class="form-group">
-              <label>存储模式</label>
-              <select v-model="editingSettings.storage.mode">
-                <option value="sqlite">SQLite (推荐)</option>
-                <option value="sidecar">侧边文件 (.ann)</option>
-              </select>
-            </div>
             <div class="form-group">
               <button class="btn-secondary" @click="onOpenSettingsDir">
                 打开配置目录
@@ -220,6 +210,24 @@ defineExpose({ open, close });
               </button>
             </div>
           </section>
+
+          <!-- 实验性设置 -->
+          <section class="settings-section experimental-section">
+            <h3>实验性 / Experimental</h3>
+            <div class="form-group checkbox">
+              <label>
+                <input
+                  type="checkbox"
+                  :checked="sidebarExperimental"
+                  @change="toggleExperimentalMode"
+                />
+                <span class="checkbox-label">
+                  <strong>侧边栏实验性模式</strong>
+                  <small>允许侧边栏宽度调整至 5% - 80%（默认 20% - 40%）</small>
+                </span>
+              </label>
+            </div>
+          </section>
         </div>
 
         <div class="dialog-footer">
@@ -234,14 +242,29 @@ defineExpose({ open, close });
 
   <!-- Typography Settings Dialog -->
   <Teleport to="body">
-    <div v-if="typographyVisible" class="settings-overlay" @click.self="closeTypographySettings">
+    <div v-if="typographyVisible" class="settings-overlay" @click.self="onCloseTypographySettings">
       <div class="typography-dialog">
         <div class="dialog-header">
           <h2>Typography Settings</h2>
-          <button class="close-btn" @click="closeTypographySettings">&times;</button>
+          <button class="close-btn" @click="onCloseTypographySettings">&times;</button>
         </div>
         <div class="dialog-content typography-content">
-          <TypographySettings />
+          <TypographySettings
+            ref="typographySettingsRef"
+            @discard="onDiscardTypographyChanges"
+          />
+        </div>
+      </div>
+
+      <!-- 关闭 Typography 设置警告 -->
+      <div v-if="showTypographyCloseWarning" class="warning-overlay">
+        <div class="warning-dialog">
+          <h3>未保存的更改</h3>
+          <p>您有未保存的排版设置更改。是否放弃更改并关闭？</p>
+          <div class="warning-actions">
+            <button class="btn-secondary" @click="cancelCloseTypographySettings">取消</button>
+            <button class="btn-primary" @click="confirmCloseTypographySettings">放弃更改</button>
+          </div>
         </div>
       </div>
     </div>
@@ -250,14 +273,14 @@ defineExpose({ open, close });
 
 <style scoped>
 .description {
-  color: #888;
+  color: var(--text-secondary, #888);
   font-size: 0.85rem;
   margin: 0 0 12px 0;
 }
 
 .typography-dialog {
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--dialog-bg, #1e1e1e);
+  border: 1px solid var(--border, #333);
   border-radius: 8px;
   width: 900px;
   max-height: 90vh;
@@ -270,12 +293,12 @@ defineExpose({ open, close });
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border, #333);
 }
 
 .typography-dialog .dialog-header h2 {
   margin: 0;
-  color: #fff;
+  color: var(--text-primary, #fff);
   font-size: 1.2rem;
 }
 
@@ -293,7 +316,7 @@ defineExpose({ open, close });
 .typography-dialog .close-btn {
   background: none;
   border: none;
-  color: #888;
+  color: var(--text-secondary, #888);
   font-size: 24px;
   cursor: pointer;
   padding: 0;
@@ -301,7 +324,48 @@ defineExpose({ open, close });
 }
 
 .typography-dialog .close-btn:hover {
-  color: #fff;
+  color: var(--text-primary, #fff);
+}
+
+/* 警告对话框 */
+.warning-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.warning-dialog {
+  background: var(--dialog-bg, #1e1e1e);
+  border: 1px solid var(--border, #444);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 360px;
+  text-align: center;
+}
+
+.warning-dialog h3 {
+  margin: 0 0 12px;
+  color: var(--text-primary, #fff);
+  font-size: 1.1rem;
+}
+
+.warning-dialog p {
+  margin: 0 0 20px;
+  color: var(--text-secondary, #aaa);
+  font-size: 0.9rem;
+}
+
+.warning-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
 }
 
 .settings-overlay {
@@ -315,11 +379,12 @@ defineExpose({ open, close });
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  isolation: isolate; /* Create new stacking context */
 }
 
 .settings-dialog {
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--dialog-bg, #1e1e1e);
+  border: 1px solid var(--border, #333);
   border-radius: 8px;
   width: 500px;
   max-height: 80vh;
@@ -332,19 +397,19 @@ defineExpose({ open, close });
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border, #333);
 }
 
 .dialog-header h2 {
   margin: 0;
-  color: #fff;
+  color: var(--text-primary, #fff);
   font-size: 1.2rem;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: #888;
+  color: var(--text-secondary, #888);
   font-size: 24px;
   cursor: pointer;
   padding: 0;
@@ -352,7 +417,7 @@ defineExpose({ open, close });
 }
 
 .close-btn:hover {
-  color: #fff;
+  color: var(--text-primary, #fff);
 }
 
 .dialog-content {
@@ -366,7 +431,7 @@ defineExpose({ open, close });
 }
 
 .settings-section h3 {
-  color: #ffd700;
+  color: var(--accent, #ffd700);
   font-size: 0.9rem;
   margin: 0 0 12px 0;
   text-transform: uppercase;
@@ -379,7 +444,7 @@ defineExpose({ open, close });
 
 .form-group label {
   display: block;
-  color: #aaa;
+  color: var(--text-secondary, #aaa);
   font-size: 0.85rem;
   margin-bottom: 4px;
 }
@@ -389,10 +454,10 @@ defineExpose({ open, close });
 .form-group select {
   width: 100%;
   padding: 8px 12px;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: var(--input-bg, #2a2a2a);
+  border: 1px solid var(--input-border, #444);
   border-radius: 4px;
-  color: #fff;
+  color: var(--input-text, #fff);
   font-size: 14px;
 }
 
@@ -400,8 +465,8 @@ defineExpose({ open, close });
   width: 60px;
   height: 32px;
   padding: 2px;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: var(--input-bg, #2a2a2a);
+  border: 1px solid var(--input-border, #444);
   border-radius: 4px;
   cursor: pointer;
 }
@@ -418,6 +483,28 @@ defineExpose({ open, close });
   height: 16px;
 }
 
+.checkbox-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checkbox-label strong {
+  color: var(--text-primary, #e0e0e0);
+  font-size: 0.9rem;
+}
+
+.checkbox-label small {
+  color: var(--text-secondary, #888);
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.experimental-section {
+  border-top: 1px dashed var(--border, #444);
+  padding-top: 20px;
+}
+
 .input-group {
   display: flex;
   gap: 8px;
@@ -428,8 +515,8 @@ defineExpose({ open, close });
 }
 
 .btn-primary {
-  background: #646cff;
-  color: white;
+  background: var(--btn-primary-bg, #646cff);
+  color: var(--btn-primary-text, white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -438,7 +525,7 @@ defineExpose({ open, close });
 }
 
 .btn-primary:hover {
-  background: #535bf2;
+  background: var(--btn-primary-bg-hover, #535bf2);
 }
 
 .btn-primary:disabled {
@@ -447,22 +534,22 @@ defineExpose({ open, close });
 }
 
 .btn-secondary {
-  background: #333;
-  color: #ccc;
-  border: 1px solid #555;
+  background: var(--btn-secondary-bg, #333);
+  color: var(--btn-secondary-text, #ccc);
+  border: 1px solid var(--btn-secondary-border, #555);
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .btn-secondary:hover {
-  background: #444;
+  background: var(--btn-secondary-hover, #444);
 }
 
 .btn-link {
   background: none;
   border: none;
-  color: #646cff;
+  color: var(--accent, #646cff);
   cursor: pointer;
   font-size: 0.85rem;
   padding: 4px 0;
@@ -470,7 +557,7 @@ defineExpose({ open, close });
 }
 
 .btn-link:hover {
-  color: #535bf2;
+  color: var(--accent-hover, #535bf2);
 }
 
 .dialog-footer {
@@ -478,6 +565,6 @@ defineExpose({ open, close });
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 20px;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border, #333);
 }
 </style>

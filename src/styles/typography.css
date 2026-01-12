@@ -32,7 +32,7 @@
   --heading-h2-size: 1.5em;
   --heading-h3-size: 1.25em;
   --heading-h4-size: 1.1em;
-  --heading-border-bottom: 1px solid #444;
+  --heading-border-bottom: 1px solid var(--border-color, #444);
 
   /* Lists */
   --list-padding-left: 2em;
@@ -40,25 +40,25 @@
 
   /* Code */
   --code-font-family: "JetBrains Mono", Consolas, monospace;
-  --code-background: #1e1e1e;
+  --code-background: var(--code-bg, #1e1e1e);
   --code-border-radius: 4px;
 
   /* Blockquote */
-  --blockquote-border-left: 4px solid #666;
+  --blockquote-border-left: 4px solid var(--border-color, #666);
   --blockquote-padding-left: 1em;
-  --blockquote-color: #999;
+  --blockquote-color: var(--text-secondary, #999);
 
   /* Links */
-  --link-color: #6caafc;
+  --link-color: var(--accent, #6caafc);
   --link-underline: underline;
-  --link-hover-color: #8ecfff;
+  --link-hover-color: var(--accent-hover, #8ecfff);
 
   /* Tables */
   --table-border-collapse: collapse;
   --table-border-spacing: 0;
-  --table-border-color: #444;
-  --table-header-background: #2a2a2a;
-  --table-row-odd-background: #242424;
+  --table-border-color: var(--border-color, #444);
+  --table-header-background: var(--bg-secondary, #2a2a2a);
+  --table-row-odd-background: var(--bg-tertiary, #242424);
 
   /* ==========================================================================
      Fixed Mode Variables (used when preset = 'fixed')
@@ -85,7 +85,7 @@
   /* Line numbers */
   --fixed-show-line-numbers: 0;
   --fixed-line-number-width: 3ch;
-  --fixed-line-number-color: #666;
+  --fixed-line-number-color: var(--text-secondary, #666);
 
   /* Tabs */
   --fixed-tab-size: 4;

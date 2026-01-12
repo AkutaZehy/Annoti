@@ -2,11 +2,11 @@
 import { ref, computed, watch } from "vue";
 import { marked } from "marked";
 import { useAnnotations } from "../composables/useAnnotations";
-import { useSettings } from "../composables/useSettings";
 import { useDocument } from "../composables/useDocument";
 import { useTypography } from "../composables/useTypography";
 import { createRendererFromPreset } from "../utils/typographyRenderer";
 import TextViewer from "./TextViewer.vue";
+import CreateAnnotationDialog from "./CreateAnnotationDialog.vue";
 import type { Annotation, AnnotationAnchor } from "../types";
 import type { RenderedLine } from "../utils/typographyRenderer";
 
@@ -19,7 +19,6 @@ const props = defineProps<{
 }>();
 
 const { annotations, updateAnnotation } = useAnnotations();
-const { getDefaultHighlightColor, getDefaultHighlightType } = useSettings();
 const { addHighlightAnnotation } = useDocument();
 const { config, isFixedMode, fixedPreset } = useTypography();
 
@@ -38,6 +37,71 @@ const typographyRenderer = computed(() => {
 
 // Fixed mode rendered lines
 const fixedLines = ref<RenderedLine[]>([]);
+
+// Annotation dialog state
+const showAnnotationDialog = ref(false);
+const annotationDialogData = ref({
+    selectedText: '',
+    anchors: [] as AnnotationAnchor[],
+    annotationId: '',
+});
+
+// Fixed highlight color
+const HIGHLIGHT_COLOR = '#ffd700';
+
+// Open annotation dialog
+const openAnnotationDialog = (
+    text: string,
+    anchors: AnnotationAnchor[],
+    id: string,
+    _color: string
+) => {
+    annotationDialogData.value = {
+        selectedText: text,
+        anchors,
+        annotationId: id,
+    };
+    showAnnotationDialog.value = true;
+};
+
+// Handle annotation confirmation
+const handleAnnotationConfirm = async (data: { note: string; color: string }) => {
+    const { selectedText, anchors, annotationId } = annotationDialogData.value;
+
+    // Save to database with fixed color
+    await addHighlightAnnotation(
+        selectedText,
+        anchors,
+        annotationId,
+        HIGHLIGHT_COLOR,
+        'underline'
+    );
+
+    // If note provided, update
+    if (data.note.trim()) {
+        await updateAnnotation(annotationId, { note: data.note.trim() });
+    }
+
+    showAnnotationDialog.value = false;
+};
+
+// Handle annotation cancel
+const handleAnnotationCancel = () => {
+    // Remove the highlight spans if cancelled
+    const container = containerRef.value;
+    if (container) {
+        const highlights = container.querySelectorAll(`[data-group-id="${annotationDialogData.value.annotationId}"]`);
+        highlights.forEach((node) => {
+            const span = node as HTMLElement;
+            const parent = span.parentNode;
+            if (parent) {
+                const text = document.createTextNode(span.textContent || "");
+                parent.replaceChild(text, span);
+            }
+        });
+    }
+    showAnnotationDialog.value = false;
+};
 
 // Watch content and preset changes to update rendering
 watch(
@@ -163,10 +227,6 @@ const handleHighlight = async () => {
 
     if (textNodes.length === 0) return;
 
-    // 获取默认样式
-    const highlightColor = getDefaultHighlightColor();
-    const highlightType = getDefaultHighlightType();
-
     // 为每个文本节点创建 anchor 并高亮
     const anchors: AnnotationAnchor[] = [];
 
@@ -201,9 +261,7 @@ const handleHighlight = async () => {
         span.className = "doc-highlight";
         span.style.backgroundColor = "rgba(255, 215, 0, 0.3)";
         span.style.cursor = "pointer";
-        if (highlightType === 'underline') {
-            span.style.borderBottom = "2px solid gold";
-        }
+        span.style.borderBottom = "2px solid var(--accent, gold)";
         span.dataset.groupId = annotationId;
         span.onclick = (e) => {
             e.stopPropagation();
@@ -221,17 +279,10 @@ const handleHighlight = async () => {
         }
     });
 
-    // 弹出笔记输入框
-    const note = prompt("添加笔记（可选，直接确定跳过）：");
+    // 打开注释对话框（不再使用 prompt）
+    openAnnotationDialog(text, anchors, annotationId, HIGHLIGHT_COLOR);
 
-    // 保存数据到数据库
-    await addHighlightAnnotation(text, anchors, annotationId, highlightColor, highlightType);
-
-    // 如果用户输入了笔记，立即更新
-    if (note !== null && note.trim() !== "") {
-        await updateAnnotation(annotationId, { note: note.trim() });
-    }
-
+    // 清空选择
     selection.removeAllRanges();
 };
 
@@ -449,6 +500,14 @@ defineExpose({
             :show-line-numbers="fixedPreset.show_line_numbers"
             class="document-content text-body"
         />
+
+        <!-- Create Annotation Dialog -->
+        <CreateAnnotationDialog
+            :visible="showAnnotationDialog"
+            :selected-text="annotationDialogData.selectedText"
+            @confirm="handleAnnotationConfirm"
+            @cancel="handleAnnotationCancel"
+        />
     </div>
 </template>
 
@@ -462,7 +521,7 @@ defineExpose({
     padding: 40px;
     line-height: 1.8;
     font-size: 1.1rem;
-    color: #e0e0e0;
+    color: var(--text-primary, #e0e0e0);
     max-width: 900px;
     margin: 0 auto;
 }
@@ -473,7 +532,7 @@ defineExpose({
 
 :deep(h1),
 :deep(h2) {
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--border, #444);
     padding-bottom: 0.3em;
 }
 </style>

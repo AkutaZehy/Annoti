@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { useAnnotations } from '../composables/useAnnotations';
+import ExportSuccessToast from './ExportSuccessToast.vue';
 
 const { annotations, exportAnnotation, exportAsHtml, importAnnotation } = useAnnotations();
 
@@ -11,6 +12,11 @@ const mode = ref<'import' | 'export'>('export');
 const loading = ref(false);
 const message = ref('');
 const messageType = ref<'success' | 'warning' | 'error'>('success');
+
+// Toast state
+const showToast = ref(false);
+const toastSuccess = ref(true);
+const toastMessage = ref('');
 
 const openDialog = (dialogMode: 'import' | 'export') => {
     mode.value = dialogMode;
@@ -21,6 +27,18 @@ const openDialog = (dialogMode: 'import' | 'export') => {
 
 const close = () => {
     visible.value = false;
+};
+
+// Show toast notification
+const showExportToast = (success: boolean, msg: string) => {
+    toastSuccess.value = success;
+    toastMessage.value = msg;
+    showToast.value = true;
+};
+
+// Handle toast close
+const handleToastClose = () => {
+    showToast.value = false;
 };
 
 // 导入文件
@@ -42,18 +60,18 @@ const handleImport = async () => {
         loading.value = true;
         const result = await importAnnotation(file);
         if (result.imported > 0) {
-            message.value = `导入了 ${result.imported} 个注解`;
-            messageType.value = 'success';
+            close();
+            showExportToast(true, `成功导入 ${result.imported} 个注解`);
         } else if (result.duplicates > 0) {
-            message.value = `跳过了 ${result.duplicates} 个重复注解`;
-            messageType.value = 'warning';
+            close();
+            showExportToast(true, `导入了 ${result.imported} 个注解，跳过了 ${result.duplicates} 个重复`);
         } else {
-            message.value = '没有新注解可导入';
-            messageType.value = 'warning';
+            close();
+            showExportToast(true, '没有新注解可导入');
         }
-        setTimeout(close, 1500);
     } catch (e) {
         message.value = '导入失败: ' + e;
+        messageType.value = 'error';
     } finally {
         loading.value = false;
     }
@@ -90,10 +108,11 @@ const exportAllAnnpkg = async () => {
             content: JSON.stringify(combined, null, 2)
         });
 
-        message.value = '导出成功！';
-        setTimeout(close, 1500);
+        close();
+        showExportToast(true, '导出成功！');
     } catch (e) {
         message.value = '导出失败: ' + e;
+        messageType.value = 'error';
     } finally {
         loading.value = false;
     }
@@ -111,10 +130,11 @@ const exportAllHtml = async () => {
 
         loading.value = true;
         await exportAsHtml(savePath);
-        message.value = '导出成功！';
-        setTimeout(close, 1500);
+        close();
+        showExportToast(true, '导出成功！');
     } catch (e) {
         message.value = '导出失败: ' + e;
+        messageType.value = 'error';
     } finally {
         loading.value = false;
     }
@@ -171,6 +191,14 @@ defineExpose({ open: openDialog, close });
                 </div>
             </div>
         </div>
+
+        <!-- Export Success Toast -->
+        <ExportSuccessToast
+            :visible="showToast"
+            :success="toastSuccess"
+            :message="toastMessage"
+            @close="handleToastClose"
+        />
     </Teleport>
 </template>
 
@@ -186,11 +214,12 @@ defineExpose({ open: openDialog, close });
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    isolation: isolate; /* Create new stacking context */
 }
 
 .dialog {
-    background: #1e1e1e;
-    border: 1px solid #333;
+    background: var(--dialog-bg, #1e1e1e);
+    border: 1px solid var(--border, #333);
     border-radius: 8px;
     width: 400px;
 }
@@ -200,24 +229,24 @@ defineExpose({ open: openDialog, close });
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border, #333);
 }
 
 .dialog-header h3 {
     margin: 0;
-    color: #fff;
+    color: var(--text-primary, #fff);
 }
 
 .close-btn {
     background: none;
     border: none;
-    color: #888;
+    color: var(--text-secondary, #888);
     font-size: 24px;
     cursor: pointer;
 }
 
 .close-btn:hover {
-    color: #fff;
+    color: var(--text-primary, #fff);
 }
 
 .dialog-content {
@@ -229,11 +258,11 @@ defineExpose({ open: openDialog, close });
     justify-content: flex-end;
     gap: 10px;
     padding: 16px 20px;
-    border-top: 1px solid #333;
+    border-top: 1px solid var(--border, #333);
 }
 
 .info-text {
-    color: #888;
+    color: var(--text-secondary, #888);
     margin-bottom: 16px;
 }
 
@@ -266,8 +295,8 @@ defineExpose({ open: openDialog, close });
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: #2a2a2a;
-    border: 1px solid #444;
+    background: var(--bg-tertiary, #2a2a2a);
+    border: 1px solid var(--border, #444);
     border-radius: 8px;
     cursor: pointer;
     text-align: left;
@@ -275,8 +304,8 @@ defineExpose({ open: openDialog, close });
 }
 
 .btn-option:hover:not(:disabled) {
-    background: #3a3a3a;
-    border-color: #646cff;
+    background: var(--bg-secondary, #3a3a3a);
+    border-color: var(--accent, #646cff);
 }
 
 .btn-option:disabled {
@@ -294,18 +323,18 @@ defineExpose({ open: openDialog, close });
 }
 
 .option-text strong {
-    color: #fff;
+    color: var(--text-primary, #fff);
     font-size: 1rem;
 }
 
 .option-text small {
-    color: #888;
+    color: var(--text-secondary, #888);
     font-size: 0.85rem;
 }
 
 .btn-primary {
-    background: #646cff;
-    color: white;
+    background: var(--accent, #646cff);
+    color: var(--btn-primary-text, white);
     border: none;
     padding: 10px 20px;
     border-radius: 4px;
@@ -314,7 +343,7 @@ defineExpose({ open: openDialog, close });
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: #535bf2;
+    background: var(--accent-hover, #535bf2);
 }
 
 .btn-primary:disabled {
@@ -323,16 +352,16 @@ defineExpose({ open: openDialog, close });
 }
 
 .btn-secondary {
-    background: #333;
-    color: #ccc;
-    border: 1px solid #555;
+    background: var(--btn-secondary-bg, #333);
+    color: var(--btn-secondary-text, #ccc);
+    border: 1px solid var(--btn-secondary-border, #555);
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background: #444;
+    background: var(--btn-secondary-hover, #444);
 }
 
 .btn-secondary:disabled {

@@ -19,8 +19,8 @@ export interface TypographyConfig {
   presets: Presets;
 }
 
-// Preset names
-export type PresetName = 'original' | 'fixed';
+// Preset names (pro is a virtual mode using custom_css)
+export type PresetName = 'original' | 'fixed' | 'pro';
 
 // ============================================================================
 // Presets Container
@@ -249,10 +249,76 @@ export const DEFAULT_FIXED_PRESET: FixedPreset = {
 // ============================================================================
 
 export function createDefaultTypographyConfig(): TypographyConfig {
+  const DEFAULT_CSS = `/* 默认 CSS 模板 - Annoti */
+.document-content {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text-primary, #e0e0e0);
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px;
+}
+
+.document-content h1 {
+  font-size: 2em;
+  color: var(--text-primary, #ffffff);
+  border-bottom: 1px solid var(--border-color, #444);
+  padding-bottom: 0.3em;
+}
+
+.document-content h2 {
+  font-size: 1.5em;
+  color: var(--text-primary, #e0e0e0);
+  border-bottom: 1px solid var(--border-color, #444);
+  padding-bottom: 0.3em;
+}
+
+.document-content code {
+  background: var(--code-background, #2a2a2a);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.document-content pre {
+  background: var(--code-background, #2a2a2a);
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.document-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.document-content blockquote {
+  border-left: 4px solid var(--accent, #646cff);
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: rgba(100, 108, 255, 0.1);
+}
+
+.document-content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.document-content th,
+.document-content td {
+  border: 1px solid var(--border-color, #444);
+  padding: 0.5em 1em;
+}
+
+.document-content th {
+  background-color: var(--bg-secondary, #2a2a2a);
+}`;
+
   return {
     preset: 'original',
     use_css_override: false,
-    custom_css: '',
+    custom_css: DEFAULT_CSS,
     presets: {
       original: DEFAULT_ORIGINAL_PRESET,
       fixed: DEFAULT_FIXED_PRESET,

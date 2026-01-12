@@ -1,0 +1,122 @@
+/* Dark Theme CSS Variables */
+.dark-theme {
+  /* Background colors */
+  --bg-primary: #242424;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #2a2a2a;
+
+  /* Text colors */
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaa;
+  --text-tertiary: #888;
+
+  /* Accent colors */
+  --accent: #646cff;
+  --accent-hover: #535bf2;
+  --border: #333;
+  --border-light: #444;
+
+  /* Document viewer */
+  --doc-bg: #242424;
+  --doc-text: #e0e0e0;
+
+  /* Code */
+  --code-bg: #1e1e1e;
+  --code-text: #e0e0e0;
+
+  /* Blockquote */
+  --blockquote-border-left: #666;
+  --blockquote-color: #999;
+
+  /* Links */
+  --link-color: #6caafc;
+  --link-hover-color: #8ecfff;
+
+  /* Tables */
+  --table-border: #444;
+  --table-header-bg: #2a2a2a;
+  --table-row-odd-bg: #242424;
+
+  /* Sticky Note */
+  --sticky-bg: #fff9c4;
+  --sticky-header: #f9a825;
+  --sticky-text: #1a1a1a;
+
+  /* Sidebar */
+  --sidebar-bg: #1e1e1e;
+  --sidebar-border: #333;
+
+  /* TopBar */
+  --topbar-bg: #1a1a1e;
+  --topbar-border: #333;
+  --topbar-text: #e0e0e0;
+
+  /* Dialog */
+  --dialog-bg: #1e1e1e;
+  --dialog-border: #333;
+
+  /* Buttons */
+  --btn-primary-bg: #646cff;
+  --btn-primary-text: #ffffff;
+  --btn-secondary-bg: #333;
+  --btn-secondary-text: #ccc;
+  --btn-secondary-border: #555;
+
+  /* Inputs */
+  --input-bg: #2a2a2a;
+  --input-border: #444;
+  --input-text: #e0e0e0;
+  --input-placeholder: #888;
+
+  /* Scrollbar */
+  --scrollbar-track: #242424;
+  --scrollbar-thumb: #444;
+  --scrollbar-thumb-hover: #555;
+}
+
+/* Typography - Dark theme overrides */
+.dark-theme .markdown-body {
+  color: var(--doc-text);
+}
+
+.dark-theme .markdown-body h1,
+.dark-theme .markdown-body h2,
+.dark-theme .markdown-body h3,
+.dark-theme .markdown-body h4 {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-light);
+}
+
+.dark-theme .markdown-body code {
+  background-color: var(--code-bg);
+  color: var(--code-text);
+}
+
+.dark-theme .markdown-body pre {
+  background-color: var(--code-bg);
+}
+
+.dark-theme .markdown-body blockquote {
+  border-left-color: var(--blockquote-border-left);
+  color: var(--blockquote-color);
+}
+
+.dark-theme .markdown-body a {
+  color: var(--link-color);
+}
+
+.dark-theme .markdown-body a:hover {
+  color: var(--link-hover-color);
+}
+
+.dark-theme .markdown-body table {
+  border-color: var(--table-border);
+}
+
+.dark-theme .markdown-body th {
+  background-color: var(--table-header-bg);
+}
+
+.dark-theme .markdown-body tr:nth-child(odd) {
+  background-color: var(--table-row-odd-bg);
+}

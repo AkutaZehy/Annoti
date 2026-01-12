@@ -1,0 +1,178 @@
+/* Light Theme CSS Variables */
+.light-theme {
+  /* Background colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e8e8e8;
+
+  /* Text colors */
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+
+  /* Accent colors */
+  --accent: #646cff;
+  --accent-hover: #535bf2;
+  --border: #ddd;
+  --border-light: #eee;
+
+  /* Document viewer */
+  --doc-bg: #ffffff;
+  --doc-text: #1a1a1a;
+
+  /* Code */
+  --code-bg: #f5f5f5;
+  --code-text: #1a1a1a;
+
+  /* Blockquote */
+  --blockquote-border-left: #ddd;
+  --blockquote-color: #666;
+
+  /* Links */
+  --link-color: #3b82f6;
+  --link-hover-color: #2563eb;
+
+  /* Tables */
+  --table-border: #ddd;
+  --table-header-bg: #f5f5f5;
+  --table-row-odd-bg: transparent;
+
+  /* Sticky Note */
+  --sticky-bg: #fff9c4;
+  --sticky-header: #f9a825;
+  --sticky-text: #1a1a1a;
+
+  /* Sidebar */
+  --sidebar-bg: #f5f5f5;
+  --sidebar-border: #ddd;
+
+  /* TopBar */
+  --topbar-bg: #ffffff;
+  --topbar-border: #eee;
+  --topbar-text: #1a1a1a;
+
+  /* Dialog */
+  --dialog-bg: #ffffff;
+  --dialog-border: #ddd;
+
+  /* Buttons */
+  --btn-primary-bg: #646cff;
+  --btn-primary-text: #ffffff;
+  --btn-secondary-bg: #f5f5f5;
+  --btn-secondary-text: #1a1a1a;
+  --btn-secondary-border: #ddd;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #ddd;
+  --input-text: #1a1a1a;
+  --input-placeholder: #999;
+
+  /* Scrollbar */
+  --scrollbar-track: #f5f5f5;
+  --scrollbar-thumb: #ccc;
+  --scrollbar-thumb-hover: #aaa;
+}
+
+/* Typography - Light theme overrides */
+.light-theme .markdown-body {
+  color: var(--doc-text);
+}
+
+.light-theme .markdown-body h1,
+.light-theme .markdown-body h2,
+.light-theme .markdown-body h3,
+.light-theme .markdown-body h4 {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-light);
+}
+
+.light-theme .markdown-body code {
+  background-color: var(--code-bg);
+  color: var(--code-text);
+}
+
+.light-theme .markdown-body pre {
+  background-color: var(--code-bg);
+}
+
+.light-theme .markdown-body blockquote {
+  border-left-color: var(--blockquote-border-left);
+  color: var(--blockquote-color);
+}
+
+.light-theme .markdown-body a {
+  color: var(--link-color);
+}
+
+.light-theme .markdown-body a:hover {
+  color: var(--link-hover-color);
+}
+
+.light-theme .markdown-body table {
+  border-color: var(--table-border);
+}
+
+.light-theme .markdown-body th {
+  background-color: var(--table-header-bg);
+}
+
+.light-theme .markdown-body tr:nth-child(odd) {
+  background-color: var(--table-row-odd-bg);
+}
+
+/* Light theme sidebar */
+.light-theme .sidebar-pane {
+  background-color: var(--sidebar-bg);
+  border-left-color: var(--sidebar-border);
+}
+
+.light-theme .sidebar-header {
+  border-bottom-color: var(--sidebar-border);
+  color: var(--text-primary);
+}
+
+.light-theme .sidebar-toggle {
+  color: var(--text-secondary);
+}
+
+.light-theme .sidebar-toggle:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.light-theme .sidebar-collapsed {
+  background-color: var(--bg-secondary);
+  border-left-color: var(--sidebar-border);
+}
+
+.light-theme .resize-handle:hover {
+  background: var(--accent);
+}
+
+.light-theme .resize-handle:active {
+  background: var(--accent-hover);
+}
+
+.light-theme .reader-pane {
+  background-color: var(--doc-bg);
+  border-right-color: var(--sidebar-border);
+}
+
+/* Light theme text viewer (Fixed mode) */
+.light-theme .text-viewer {
+  background-color: var(--doc-bg);
+  color: var(--doc-text);
+}
+
+.light-theme .text-viewer::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.light-theme .text-viewer::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+.light-theme .text-viewer::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}

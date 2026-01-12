@@ -4,7 +4,7 @@
 preset: original
 use_css_override: false
 custom_css: |
-  |
+  
 
 presets:
   original:
