@@ -27,7 +27,7 @@ const startEditing = (item: Annotation, event: Event) => {
 // 保存笔记
 const saveNote = async (id: string) => {
     if (editingId.value === id) {
-        await updateAnnotation(id, editingNote.value);
+        await updateAnnotation(id, { note: editingNote.value });
         editingId.value = null;
     }
 };
@@ -63,7 +63,10 @@ const isEditing = (id: string) => editingId.value === id;
                 :class="{ 'is-editing': isEditing(item.id) }"
                 @click="!isEditing(item.id) && emit('locate', item.id)">
                 <div class="card-header">
-                    <span class="card-time">{{ new Date(item.createdAt).toLocaleString() }}</span>
+                    <div class="card-meta">
+                        <span class="card-user">{{ item.userName }}</span>
+                        <span class="card-time">{{ new Date(item.createdAt).toLocaleString() }}</span>
+                    </div>
                     <div class="card-actions">
                         <button
                             v-if="!isEditing(item.id)"
@@ -154,8 +157,18 @@ const isEditing = (id: string) => editingId.value === id;
 .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 8px;
+}
+.card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.card-user {
+    font-size: 0.85rem;
+    color: #ffd700;
+    font-weight: 500;
 }
 .card-actions {
     display: flex;
@@ -211,8 +224,8 @@ const isEditing = (id: string) => editingId.value === id;
     font-style: italic;
 }
 .card-time {
-    font-size: 0.8rem;
-    color: #888;
+    font-size: 0.75rem;
+    color: #666;
 }
 .note-edit {
     margin-top: 8px;

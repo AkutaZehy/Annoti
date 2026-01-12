@@ -2,12 +2,16 @@ import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useAnnotations } from './useAnnotations';
+import { useSettings } from './useSettings';
 
 // 全局状态：当前文档的内容
-const docContent = ref<string>('# 欢迎\n请点击右上角打开文件。');
+export const docContent = ref<string>('# 欢迎\n请点击右上角打开文件。');
 const currentFilePath = ref<string>('');
+const currentDocId = ref<string>('');
 
 export function useDocument() {
+  const { currentUser } = useSettings();
+  const { setDocument, addAnnotation } = useAnnotations();
 
   /**
    * 打开文件选择器并加载内容
@@ -37,9 +41,8 @@ export function useDocument() {
       docContent.value = content;
       currentFilePath.value = path;
 
-      // 5. 加载关联的批注文件（在 openFile 时才获取 setDocument）
-      const { setDocument } = useAnnotations();
-      await setDocument(path);
+      // 5. 加载关联的批注
+      await setDocument(path, content);
 
       console.log('文件加载成功:', path);
 
@@ -49,9 +52,37 @@ export function useDocument() {
     }
   };
 
+  /**
+   * 添加高亮注解（由 DocumentViewer 调用）
+   */
+  const addHighlightAnnotation = async (
+    text: string,
+    anchor: any[],
+    groupId: string,
+    highlightColor?: string,
+    highlightType?: 'underline' | 'square'
+  ) => {
+    if (!currentUser.value) {
+      console.warn('User not loaded');
+      return;
+    }
+
+    await addAnnotation(
+      text,
+      anchor,
+      groupId,
+      currentUser.value.id,
+      currentUser.value.name,
+      highlightColor,
+      highlightType
+    );
+  };
+
   return {
     docContent,
     currentFilePath,
-    openFile
+    currentDocId,
+    openFile,
+    addHighlightAnnotation
   };
 }

@@ -2,6 +2,8 @@
 import { ref, computed } from "vue";
 import { marked } from "marked";
 import { useAnnotations } from "../composables/useAnnotations";
+import { useSettings } from "../composables/useSettings";
+import { useDocument } from "../composables/useDocument";
 import type { Annotation, AnnotationAnchor } from "../types";
 
 const emit = defineEmits<{
@@ -14,7 +16,9 @@ const props = defineProps<{
     content: string;
 }>();
 
-const { addAnnotation, annotations, updateAnnotation } = useAnnotations();
+const { annotations, updateAnnotation } = useAnnotations();
+const { getDefaultHighlightColor, getDefaultHighlightType } = useSettings();
+const { addHighlightAnnotation } = useDocument();
 const containerRef = ref<HTMLElement | null>(null);
 
 // 标记是否正在恢复高亮（避免触发新的保存）
@@ -93,7 +97,7 @@ const getTextNodeIndex = (textNode: Text): number => {
 // --- 暴露给父组件的方法 ---
 
 // 1. 执行跨段落高亮并保存数据
-const handleHighlight = () => {
+const handleHighlight = async () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed)
         return;
@@ -106,6 +110,10 @@ const handleHighlight = () => {
     const textNodes = getTextNodesInRange(range);
 
     if (textNodes.length === 0) return;
+
+    // 获取默认样式
+    const highlightColor = getDefaultHighlightColor();
+    const highlightType = getDefaultHighlightType();
 
     // 为每个文本节点创建 anchor 并高亮
     const anchors: AnnotationAnchor[] = [];
@@ -141,7 +149,9 @@ const handleHighlight = () => {
         span.className = "doc-highlight";
         span.style.backgroundColor = "rgba(255, 215, 0, 0.3)";
         span.style.cursor = "pointer";
-        span.style.borderBottom = "2px solid gold";
+        if (highlightType === 'underline') {
+            span.style.borderBottom = "2px solid gold";
+        }
         span.dataset.groupId = annotationId;
         span.onclick = (e) => {
             e.stopPropagation();
@@ -162,12 +172,12 @@ const handleHighlight = () => {
     // 弹出笔记输入框
     const note = prompt("添加笔记（可选，直接确定跳过）：");
 
-    // 保存数据
-    addAnnotation(text, anchors, annotationId);
+    // 保存数据到数据库
+    await addHighlightAnnotation(text, anchors, annotationId, highlightColor, highlightType);
 
     // 如果用户输入了笔记，立即更新
     if (note !== null && note.trim() !== "") {
-        updateAnnotation(annotationId, note.trim());
+        await updateAnnotation(annotationId, { note: note.trim() });
     }
 
     selection.removeAllRanges();
@@ -254,7 +264,7 @@ const applyHighlight = async (anno: Annotation) => {
 
     for (let i = 0; i < anchors.length; i++) {
         const anchor = anchors[i];
-        if (!restoreSingleHighlight(container, anchor, anno.id, i === 0)) {
+        if (!restoreSingleHighlight(container, anchor, anno.id, i === 0, anno)) {
             console.warn(`无法恢复片段 ${i} for annotation:`, anno.id);
         }
     }
@@ -265,7 +275,8 @@ const restoreSingleHighlight = (
     container: HTMLElement,
     anchor: AnnotationAnchor,
     groupId: string,
-    isFirst: boolean
+    isFirst: boolean,
+    anno?: Annotation
 ): boolean => {
     try {
         // 通过选择器找到父元素
@@ -304,9 +315,11 @@ const restoreSingleHighlight = (
         // 创建高亮元素
         const span = document.createElement("span");
         span.className = "doc-highlight";
-        span.style.backgroundColor = "rgba(255, 215, 0, 0.3)";
+        span.style.backgroundColor = anno?.highlightColor ? `${anno.highlightColor}4d` : "rgba(255, 215, 0, 0.3)";
         span.style.cursor = "pointer";
-        span.style.borderBottom = "2px solid gold";
+        if (anno?.highlightType === 'underline' || !anno) {
+            span.style.borderBottom = "2px solid gold";
+        }
         span.dataset.groupId = groupId;
         span.onclick = (e) => {
             e.stopPropagation();

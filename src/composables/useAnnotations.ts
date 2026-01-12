@@ -1,229 +1,226 @@
 import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import type { Annotation, AnnotationAnchor } from '../types';
+import { marked } from 'marked';
+import { docContent } from './useDocument';
+import type { Annotation, AnnotationAnchor, AnnotationRecord } from '../types';
 
-// 全局状态（单例模式，简单模拟Store）
+// 全局状态
 const annotations = ref<Annotation[]>([]);
-
-// 当前文档关联的批注文件路径
-let currentAnnotationPath: string | null = null;
-
-// 防抖保存计时器
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-const SAVE_DEBOUNCE_MS = 500;
+let currentDocId: string | null = null;
+let currentDocPath: string | null = null;
 
 /**
- * 生成批注文件路径（document.md -> document.md.ann）
+ * 转换 AnnotationRecord 到 Annotation
  */
-const getAnnotationPath = (docPath: string): string => {
-  return `${docPath}.ann`;
+const recordToAnnotation = (record: AnnotationRecord): Annotation => {
+  return {
+    id: record.id,
+    userId: record.user_id,
+    userName: record.user_name,
+    text: record.text,
+    note: record.note,
+    anchor: JSON.parse(record.anchor_data) as AnnotationAnchor[],
+    createdAt: record.created_at,
+    noteVisible: record.note_visible,
+    notePosition: { x: record.note_position_x, y: record.note_position_y },
+    noteSize: { width: record.note_width, height: record.note_height },
+    highlightColor: record.highlight_color,
+    highlightType: record.highlight_type as 'underline' | 'square'
+  };
 };
 
 /**
- * 保存批注到文件（防抖）
+ * 转换 Annotation 到 AnnotationRecord
  */
-const saveAnnotations = async () => {
-  if (!currentAnnotationPath) return;
-
-  // 清除之前的计时器
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-  }
-
-  // 设置新的防抖计时器
-  saveTimeout = setTimeout(async () => {
-    try {
-      const json = JSON.stringify(annotations.value, null, 2);
-      await invoke('write_file_content', {
-        path: currentAnnotationPath,
-        content: json
-      });
-      console.log('批注已保存:', currentAnnotationPath);
-    } catch (e) {
-      console.error('保存批注失败:', e);
-    } finally {
-      saveTimeout = null;
-    }
-  }, SAVE_DEBOUNCE_MS);
+const annotationToRecord = (anno: Annotation, docId: string): AnnotationRecord => {
+  return {
+    id: anno.id,
+    document_id: docId,
+    user_id: anno.userId,
+    user_name: anno.userName,
+    text: anno.text,
+    note: anno.note,
+    note_visible: anno.noteVisible,
+    note_position_x: anno.notePosition.x,
+    note_position_y: anno.notePosition.y,
+    note_width: anno.noteSize.width,
+    note_height: anno.noteSize.height,
+    highlight_color: anno.highlightColor,
+    highlight_type: anno.highlightType,
+    anchor_data: JSON.stringify(anno.anchor),
+    created_at: anno.createdAt,
+    updated_at: Date.now()
+  };
 };
 
 /**
- * 检查文件是否存在
+ * 保存单个注解到数据库
  */
-const annotationFileExists = async (docPath: string): Promise<boolean> => {
-  const annPath = getAnnotationPath(docPath);
-  return await invoke<boolean>('file_exists', { path: annPath });
-};
+const saveAnnotation = async (anno: Annotation): Promise<void> => {
+  if (!currentDocId) return;
 
-/**
- * 从文件加载批注
- * @returns 成功返回数组，文件不存在返回 null，损坏返回 null
- */
-const loadAnnotations = async (docPath: string): Promise<Annotation[] | null> => {
-  const annPath = getAnnotationPath(docPath);
-
-  try {
-    const content = await invoke<string>('read_file_content', { path: annPath });
-    const parsed = JSON.parse(content);
-
-    // 验证数据结构
-    if (Array.isArray(parsed) && parsed.every(a =>
-      typeof a.id === 'string' &&
-      typeof a.text === 'string' &&
-      (a.note === undefined || typeof a.note === 'string') &&
-      Array.isArray(a.anchor) &&
-      a.anchor.length > 0 &&
-      a.anchor.every((anch: unknown) =>
-        typeof anch === 'object' && anch !== null &&
-        typeof (anch as any).containerPath === 'string' &&
-        typeof (anch as any).textNodeIndex === 'number' &&
-        typeof (anch as any).startOffset === 'number' &&
-        typeof (anch as any).endOffset === 'number'
-      ) &&
-      typeof a.createdAt === 'number' &&
-      // 便签视觉状态字段验证（可选，用于向后兼容）
-      (a.noteVisible === undefined || typeof a.noteVisible === 'boolean') &&
-      (a.notePosition === undefined ||
-        (typeof a.notePosition === 'object' &&
-          typeof a.notePosition.x === 'number' &&
-          typeof a.notePosition.y === 'number')) &&
-      (a.noteSize === undefined ||
-        (typeof a.noteSize === 'object' &&
-          typeof a.noteSize.width === 'number' &&
-          typeof a.noteSize.height === 'number'))
-    )) {
-      // 迁移：确保旧数据有默认的便签视觉状态
-      return (parsed as Annotation[]).map(a => ({
-        ...a,
-        noteVisible: a.noteVisible ?? false,
-        notePosition: a.notePosition ?? { x: 0, y: 0 },
-        noteSize: a.noteSize ?? { width: 280, height: 180 }
-      }));
-    } else {
-      return null; // 数据损坏
-    }
-  } catch (e) {
-    // 读取失败视为损坏
-    console.warn('批注文件读取失败:', e);
-    return null;
-  }
-};
-
-/**
- * 备份损坏的批注文件
- */
-const backupCorruptedFile = async (docPath: string) => {
-  const annPath = getAnnotationPath(docPath);
-  const backupPath = `${annPath}.backup.${Date.now()}`;
-
-  try {
-    const content = await invoke<string>('read_file_content', { path: annPath });
-    await invoke('write_file_content', { path: backupPath, content });
-    console.log('已备份损坏的批注文件:', backupPath);
-    alert(`批注文件已损坏，已备份到: ${backupPath.split(/[\\/]/).pop()}`);
-  } catch (e) {
-    console.error('备份失败:', e);
-    alert('批注文件已损坏，备份失败');
-  }
+  const record = annotationToRecord(anno, currentDocId);
+  await invoke('update_annotation', { annotation: JSON.stringify(record) });
 };
 
 export function useAnnotations() {
-
   /**
-   * 设置当前文档并加载批注
+   * 设置当前文档并加载注解
    */
-  const setDocument = async (docPath: string): Promise<void> => {
-    // 数据隔离：清空旧批注
+  const setDocument = async (docPath: string, docContent: string): Promise<void> => {
     annotations.value = [];
-    currentAnnotationPath = getAnnotationPath(docPath);
+    currentDocPath = docPath;
 
-    // 检查批注文件是否存在
-    const exists = await annotationFileExists(docPath);
+    try {
+      // 保存文档
+      const docRecord = await invoke<{ id: string; content: string }>('save_document', {
+        path: docPath,
+        content: docContent
+      });
 
-    if (!exists) {
-      // 批注文件不存在：创建空文件
-      await saveAnnotations();
-      return;
-    }
+      currentDocId = docRecord.id;
 
-    // 批注文件存在，尝试加载
-    const loaded = await loadAnnotations(docPath);
+      // 加载注解
+      const records = await invoke<AnnotationRecord[]>('get_annotations', {
+        docId: currentDocId
+      });
 
-    if (loaded === null) {
-      // 数据损坏：备份 + 警告
-      await backupCorruptedFile(docPath);
+      annotations.value = records.map(recordToAnnotation);
+    } catch (e) {
+      console.error('Load annotations failed:', e);
       annotations.value = [];
-    } else {
-      annotations.value = loaded;
     }
   };
 
   /**
-   * 添加一条新批注并保存
-   * @param text 批注文本
-   * @param anchor 位置锚点数组
-   * @param groupId 分组ID（用于关联多个片段）
+   * 添加新注解
    */
-  const addAnnotation = async (text: string, anchor: AnnotationAnchor[], groupId: string) => {
+  const addAnnotation = async (
+    text: string,
+    anchor: AnnotationAnchor[],
+    groupId: string,
+    userId: string,
+    userName: string,
+    highlightColor: string = '#ffd700',
+    highlightType: 'underline' | 'square' = 'underline'
+  ): Promise<Annotation> => {
+    if (!currentDocId) {
+      throw new Error('No document set');
+    }
+
     const newAnno: Annotation = {
       id: groupId,
+      userId,
+      userName,
       text,
       anchor,
       createdAt: Date.now(),
-      // 便签视觉状态默认值
       noteVisible: false,
       notePosition: { x: 0, y: 0 },
       noteSize: { width: 280, height: 180 },
+      highlightColor,
+      highlightType
     };
-    annotations.value.push(newAnno);
 
-    // 自动保存
-    await saveAnnotations();
+    // 保存到数据库
+    const record = annotationToRecord(newAnno, currentDocId);
+    await invoke('add_annotation', { annotation: JSON.stringify(record) });
+
+    annotations.value.push(newAnno);
+    return newAnno;
   };
 
   /**
-   * 根据ID查找批注
+   * 导出单个注解为 annpkg
+   */
+  const exportAnnotation = async (annoId: string): Promise<Blob> => {
+    if (!currentDocPath) {
+      throw new Error('No document set');
+    }
+
+    const json = await invoke<string>('export_annotation', {
+      annoId,
+      docPath: currentDocPath
+    });
+
+    return new Blob([json], { type: 'application/json' });
+  };
+
+  /**
+   * 导入注解
+   */
+  const importAnnotation = async (file: File): Promise<{ imported: number; duplicates: number; warning?: string }> => {
+    if (!currentDocPath) {
+      throw new Error('No document set');
+    }
+
+    const text = await file.text();
+
+    // 解析导入
+    const result = await invoke<string>('import_annotation', { json: text });
+    const importedAnnotations: AnnotationRecord[] = JSON.parse(result);
+
+    if (importedAnnotations.length === 0) {
+      return { imported: 0, duplicates: 0, warning: '文件中没有注解' };
+    }
+
+    // 获取当前注解数量用于计算去重
+    const beforeCount = annotations.value.length;
+
+    // 合并到数据库（自动去重）
+    const importedCount = await invoke<number>('merge_imported_annotations', {
+      annotationsJson: JSON.stringify(importedAnnotations),
+      docPath: currentDocPath
+    });
+
+    const afterCount = annotations.value.length;
+    const duplicates = afterCount - beforeCount - importedCount;
+
+    // 重新加载
+    if (currentDocId) {
+      const records = await invoke<AnnotationRecord[]>('get_annotations', {
+        docId: currentDocId
+      });
+      annotations.value = records.map(recordToAnnotation);
+    }
+
+    return {
+      imported: importedCount,
+      duplicates: duplicates > 0 ? duplicates : 0,
+      warning: importedCount === 0 ? '所有注解已存在（去重）' : undefined
+    };
+  };
+
+  /**
+   * 根据ID查找注解
    */
   const getAnnotationById = (id: string) => {
     return annotations.value.find(a => a.id === id);
   };
 
   /**
-   * 手动触发保存（可选，用于批量操作后保存）
+   * 更新注解
    */
-  const forceSave = async () => {
-    await saveAnnotations();
-  };
-
-  /**
-   * 更新批注的笔记内容
-   */
-  const updateAnnotation = async (id: string, note: string): Promise<boolean> => {
+  const updateAnnotation = async (id: string, updates: Partial<Annotation>): Promise<boolean> => {
     const index = annotations.value.findIndex(a => a.id === id);
-    if (index === -1) {
-      console.warn('找不到要更新的批注:', id);
-      return false;
-    }
+    if (index === -1) return false;
 
-    annotations.value[index].note = note;
-    await saveAnnotations();
+    annotations.value[index] = { ...annotations.value[index], ...updates };
+    await saveAnnotation(annotations.value[index]);
     return true;
   };
 
   /**
-   * 删除批注
-   * @returns 返回被删除的批注数据，用于前端移除高亮
+   * 删除注解
    */
   const deleteAnnotation = async (id: string): Promise<Annotation | null> => {
     const index = annotations.value.findIndex(a => a.id === id);
-    if (index === -1) {
-      console.warn('找不到要删除的批注:', id);
-      return null;
-    }
+    if (index === -1) return null;
 
     const deleted = annotations.value[index];
     annotations.value.splice(index, 1);
-    await saveAnnotations();
+
+    await invoke('delete_annotation', { id });
     return deleted;
   };
 
@@ -231,66 +228,140 @@ export function useAnnotations() {
    * 显示便签
    */
   const showNote = async (id: string): Promise<boolean> => {
-    const index = annotations.value.findIndex(a => a.id === id);
-    if (index === -1) return false;
-
-    annotations.value[index].noteVisible = true;
-    await saveAnnotations();
-    return true;
+    return await updateAnnotation(id, { noteVisible: true });
   };
 
   /**
    * 隐藏便签
    */
   const hideNote = async (id: string): Promise<boolean> => {
-    const index = annotations.value.findIndex(a => a.id === id);
-    if (index === -1) return false;
-
-    annotations.value[index].noteVisible = false;
-    await saveAnnotations();
-    return true;
+    return await updateAnnotation(id, { noteVisible: false });
   };
 
   /**
    * 更新便签位置
    */
   const updateNotePosition = async (id: string, x: number, y: number): Promise<boolean> => {
-    const index = annotations.value.findIndex(a => a.id === id);
-    if (index === -1) return false;
-
-    annotations.value[index].notePosition = { x, y };
-    await saveAnnotations();
-    return true;
+    return await updateAnnotation(id, { notePosition: { x, y } });
   };
 
   /**
    * 更新便签尺寸
    */
   const updateNoteSize = async (id: string, width: number, height: number): Promise<boolean> => {
-    const index = annotations.value.findIndex(a => a.id === id);
-    if (index === -1) return false;
-
-    annotations.value[index].noteSize = { width, height };
-    await saveAnnotations();
-    return true;
+    return await updateAnnotation(id, { noteSize: { width, height } });
   };
 
   /**
-   * 重置便签位置到默认位置（高亮旁边）
+   * 重置便签位置
    */
   const resetNotePosition = async (id: string): Promise<boolean> => {
-    const index = annotations.value.findIndex(a => a.id === id);
-    if (index === -1) return false;
+    return await updateAnnotation(id, { notePosition: { x: 0, y: 0 } });
+  };
 
-    annotations.value[index].notePosition = { x: 0, y: 0 };
-    await saveAnnotations();
-    return true;
+  /**
+   * 导出为只读 HTML
+   */
+  const exportAsHtml = async (savePath: string): Promise<void> => {
+    if (!currentDocId) {
+      throw new Error('No document set');
+    }
+
+    const renderedContent = await marked(docContent.value || '');
+
+    // 将 HTML 字符串转换为 DOM，应用的锚点高亮
+    // 注意：锚点路径基于 .markdown-body 包装器
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = `<div class="markdown-body">${renderedContent}</div>`;
+    const markdownBody = tempDiv.querySelector<HTMLElement>('.markdown-body')!;
+
+    // 应用高亮到 DOM
+    for (const anno of annotations.value) {
+      if (anno.anchor && anno.anchor.length > 0) {
+        applyHighlightsToDom(markdownBody, anno);
+      }
+    }
+
+    // 获取带有高亮的 HTML
+    const contentWithHighlights = tempDiv.innerHTML;
+
+    const annoIds = annotations.value.map(a => a.id);
+    const html = await invoke<string>('export_as_html', {
+      docId: currentDocId,
+      annoIds,
+      content: contentWithHighlights
+    });
+
+    await invoke('save_html_file', { path: savePath, html });
+  };
+
+  // 将锚点高亮应用到 DOM
+  const applyHighlightsToDom = (container: HTMLElement, anno: Annotation) => {
+    if (!anno.anchor || anno.anchor.length === 0) return;
+
+    for (const anchor of anno.anchor) {
+      try {
+        const parentEl = container.querySelector(anchor.containerPath);
+        if (!parentEl) continue;
+
+        // 找到指定索引的文本节点
+        let textNode: Node | null = null;
+        let currentNode: Node | null = parentEl.firstChild;
+        let currentIndex = 0;
+
+        while (currentNode) {
+          if (currentNode.nodeType === Node.TEXT_NODE) {
+            if (currentIndex === anchor.textNodeIndex) {
+              textNode = currentNode;
+              break;
+            }
+            currentIndex++;
+          }
+          currentNode = currentNode.nextSibling;
+        }
+
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE) continue;
+
+        // 创建范围并高亮
+        const range = document.createRange();
+        const textContent = textNode.textContent || '';
+        range.setStart(textNode, Math.min(anchor.startOffset, textContent.length));
+        range.setEnd(textNode, Math.min(anchor.endOffset, textContent.length));
+
+        // 创建高亮元素
+        const span = document.createElement('span');
+        span.className = 'doc-highlight';
+        span.dataset.annoId = anno.id;
+        span.style.backgroundColor = anno.highlightColor ? `${anno.highlightColor}4d` : 'rgba(255, 215, 0, 0.3)';
+        if (anno.highlightType === 'underline') {
+          span.style.borderBottom = `2px solid ${anno.highlightColor || 'gold'}`;
+        }
+
+        try {
+          range.surroundContents(span);
+        } catch (e) {
+          // 如果范围跨越多个节点，尝试部分高亮
+          console.warn('Highlight span failed, trying alternative approach', e);
+        }
+      } catch (e) {
+        console.warn('Failed to apply highlight for annotation:', anno.id, e);
+      }
+    }
+  };
+
+  /**
+   * 迁移侧边文件
+   */
+  const migrateSidecarFiles = async (baseDir: string): Promise<void> => {
+    await invoke('migrate_sidecar_files', { baseDir });
   };
 
   return {
     annotations,
     setDocument,
     addAnnotation,
+    exportAnnotation,
+    importAnnotation,
     getAnnotationById,
     updateAnnotation,
     deleteAnnotation,
@@ -299,6 +370,7 @@ export function useAnnotations() {
     updateNotePosition,
     updateNoteSize,
     resetNotePosition,
-    forceSave
+    exportAsHtml,
+    migrateSidecarFiles
   };
 }
