@@ -66,12 +66,12 @@ Annoti 是一个基于 Tauri 的本地文档批注工具，支持 Markdown/HTML 
 
    构建完成后，安装包位于：
    ```
-   src-tauri/target/release/bundle/msi/Annoti_0.1.0_x64.msi
+   src-tauri/target/release/bundle/msi/Annoti_1.0.0-dev_x64.msi
    ```
 
 ### 使用 MSI 安装包
 
-1. 双击 `Annoti_0.1.0_x64.msi` 运行安装程序
+1. 双击 `Annoti_1.0.0-dev_x64.msi` 运行安装程序
 2. 按照安装向导提示完成安装
 3. 安装完成后，在开始菜单或桌面找到 Annoti 图标启动
 
@@ -102,6 +102,7 @@ Annoti 是一个基于 Tauri 的本地文档批注工具，支持 Markdown/HTML 
 - **后端**：Tauri 2 + Rust
 - **数据库**：SQLite (rusqlite)
 - **样式**：CSS + CSS Variables
+- **AI Agent**：Claude Code Router + MiniMax-M2.1(chatcompletion-v2)
 
 ## 目录结构
 
@@ -126,7 +127,7 @@ Annoti/
 
 **暂时关闭**：本项目目前暂停接受贡献。
 
-这是一个个人兴趣爱好项目，由于时间和精力有限，暂不接收：
+由于时间和精力有限，暂不接收：
 - Pull Request
 - Issue 报告
 - 功能请求
@@ -140,3 +141,4 @@ MIT License
 - [Tauri](https://tauri.app/) - 构建跨平台桌面应用
 - [Vue.js](https://vuejs.org/) - 前端框架
 - [SQLite](https://www.sqlite.org/) - 轻量级数据库
+- [Claude Code Router](https://github.com/musistudio/claude-code-router) - 提供自定 API 接入 Claude
