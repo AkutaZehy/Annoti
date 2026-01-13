@@ -11,11 +11,11 @@
    - The useTypography composable updates these variables reactively
 */
 
-:root {
-  /* ==========================================================================
-     Typography Variables (populated by useTypography composable)
-     ========================================================================== */
+/* ==========================================================================
+   Typography Variables (populated by useTypography composable)
+   ========================================================================== */
 
+:root {
   /* Base typography */
   --font-family: system-ui, -apple-system, sans-serif;
   --font-size: 18px;
@@ -93,165 +93,166 @@
 
   /* Whitespace display */
   --fixed-show-whitespace: 0;
+}
 
-  /* ==========================================================================
-     Render Mode Classes
-     ========================================================================== */
+/* ==========================================================================
+   Render Mode Classes
+   ========================================================================== */
 
-  /* Original preset (markdown HTML) */
-  .typography-original .document-content {
-    font-family: var(--font-family);
-    font-size: var(--font-size);
-    font-weight: var(--font-weight);
-    line-height: var(--line-height);
-    text-align: var(--text-align);
-  }
+/* Original preset (markdown HTML) */
+.typography-original .document-content {
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  font-weight: var(--font-weight);
+  line-height: var(--line-height);
+  text-align: var(--text-align);
+}
 
-  .typography-original .document-content p {
-    margin-bottom: var(--paragraph-spacing);
-  }
+.typography-original .document-content p {
+  margin-bottom: var(--paragraph-spacing);
+}
 
-  .typography-original .document-content h1 {
-    font-size: var(--heading-h1-size);
-    margin: var(--heading-margin);
-    border-bottom: var(--heading-border-bottom);
-  }
+.typography-original .document-content h1 {
+  font-size: var(--heading-h1-size);
+  margin: var(--heading-margin);
+  border-bottom: var(--heading-border-bottom);
+}
 
-  .typography-original .document-content h2 {
-    font-size: var(--heading-h2-size);
-    margin: var(--heading-margin);
-    border-bottom: var(--heading-border-bottom);
-  }
+.typography-original .document-content h2 {
+  font-size: var(--heading-h2-size);
+  margin: var(--heading-margin);
+  border-bottom: var(--heading-border-bottom);
+}
 
-  .typography-original .document-content h3 {
-    font-size: var(--heading-h3-size);
-    margin: var(--heading-margin);
-  }
+.typography-original .document-content h3 {
+  font-size: var(--heading-h3-size);
+  margin: var(--heading-margin);
+}
 
-  .typography-original .document-content h4 {
-    font-size: var(--heading-h4-size);
-    margin: var(--heading-margin);
-  }
+.typography-original .document-content h4 {
+  font-size: var(--heading-h4-size);
+  margin: var(--heading-margin);
+}
 
-  .typography-original .document-content ul,
-  .typography-original .document-content ol {
-    padding-left: var(--list-padding-left);
-    list-style-type: var(--list-bullet-style);
-  }
+.typography-original .document-content ul,
+.typography-original .document-content ol {
+  padding-left: var(--list-padding-left);
+  list-style-type: var(--list-bullet-style);
+}
 
-  .typography-original .document-content pre {
-    font-family: var(--code-font-family);
-    background: var(--code-background);
-    border-radius: var(--code-border-radius);
-    padding: 1em;
-    overflow-x: auto;
-  }
+.typography-original .document-content pre {
+  font-family: var(--code-font-family);
+  background: var(--code-background);
+  border-radius: var(--code-border-radius);
+  padding: 1em;
+  overflow-x: auto;
+}
 
-  .typography-original .document-content code {
-    font-family: var(--code-font-family);
-    background: var(--code-background);
-    padding: 0.2em 0.4em;
-    border-radius: var(--code-border-radius);
-    font-size: 0.9em;
-  }
+.typography-original .document-content code {
+  font-family: var(--code-font-family);
+  background: var(--code-background);
+  padding: 0.2em 0.4em;
+  border-radius: var(--code-border-radius);
+  font-size: 0.9em;
+}
 
-  .typography-original .document-content pre code {
-    background: none;
-    padding: 0;
-  }
+.typography-original .document-content pre code {
+  background: none;
+  padding: 0;
+}
 
-  .typography-original .document-content blockquote {
-    border-left: var(--blockquote-border-left);
-    padding-left: var(--blockquote-padding-left);
-    color: var(--blockquote-color);
-    margin: 1em 0;
-  }
+.typography-original .document-content blockquote {
+  border-left: var(--blockquote-border-left);
+  padding-left: var(--blockquote-padding-left);
+  color: var(--blockquote-color);
+  margin: 1em 0;
+}
 
-  .typography-original .document-content a {
-    color: var(--link-color);
-    text-decoration: var(--link-underline);
-  }
+.typography-original .document-content a {
+  color: var(--link-color);
+  text-decoration: var(--link-underline);
+}
 
-  .typography-original .document-content a:hover {
-    color: var(--link-hover-color);
-  }
+.typography-original .document-content a:hover {
+  color: var(--link-hover-color);
+}
 
-  .typography-original .document-content table {
-    border-collapse: var(--table-border-collapse);
-    border-spacing: var(--table-border-spacing);
-    width: 100%;
-    margin: 1em 0;
-  }
+.typography-original .document-content table {
+  border-collapse: var(--table-border-collapse);
+  border-spacing: var(--table-border-spacing);
+  width: 100%;
+  margin: 1em 0;
+}
 
-  .typography-original .document-content th,
-  .typography-original .document-content td {
-    border: 1px solid var(--table-border-color);
-    padding: 0.5em 1em;
-  }
+.typography-original .document-content th,
+.typography-original .document-content td {
+  border: 1px solid var(--table-border-color);
+  padding: 0.5em 1em;
+}
 
-  .typography-original .document-content th {
-    background: var(--table-header-background);
-  }
+.typography-original .document-content th {
+  background: var(--table-header-background);
+}
 
-  .typography-original .document-content tr:nth-child(odd) {
-    background: var(--table-row-odd-background);
-  }
+.typography-original .document-content tr:nth-child(odd) {
+  background: var(--table-row-odd-background);
+}
 
-  /* Fixed preset (plain text, fixed width) */
-  .typography-fixed .document-content {
-    font-family: var(--fixed-font-family);
-    font-size: var(--fixed-font-size);
-    font-weight: var(--fixed-font-weight);
-    line-height: var(--fixed-line-height);
-    text-align: var(--fixed-text-align);
-  }
+/* Fixed preset (plain text, fixed width) */
+.typography-fixed .document-content {
+  font-family: var(--fixed-font-family);
+  font-size: var(--fixed-font-size);
+  font-weight: var(--fixed-font-weight);
+  line-height: var(--fixed-line-height);
+  text-align: var(--fixed-text-align);
+}
 
-  /* Line number styling */
-  .typography-fixed .document-content.with-line-numbers {
-    --fixed-show-line-numbers: 1;
-  }
+/* Line number styling */
+.typography-fixed .document-content.with-line-numbers {
+  --fixed-show-line-numbers: 1;
+}
 
-  .typography-fixed .document-content .text-line {
-    display: flex;
-    min-height: var(--fixed-line-height);
-  }
+.typography-fixed .document-content .text-line {
+  display: flex;
+  min-height: var(--fixed-line-height);
+}
 
-  .typography-fixed .document-content .line-number {
-    color: var(--fixed-line-number-color);
-    margin-right: 1em;
-    user-select: none;
-    text-align: right;
-    min-width: var(--fixed-line-number-width);
-    font-variant-numeric: tabular-nums;
-  }
+.typography-fixed .document-content .line-number {
+  color: var(--fixed-line-number-color);
+  margin-right: 1em;
+  user-select: none;
+  text-align: right;
+  min-width: var(--fixed-line-number-width);
+  font-variant-numeric: tabular-nums;
+}
 
-  .typography-fixed .document-content .line-content {
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
+.typography-fixed .document-content .line-content {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 
-  .typography-fixed .document-content .line-content.whitespace-visible::before {
-    content: "·";
-    margin-right: 0.25em;
-  }
+.typography-fixed .document-content .line-content.whitespace-visible::before {
+  content: "·";
+  margin-right: 0.25em;
+}
 
-  /* ==========================================================================
-     CSS Override Mode
-     ========================================================================== */
+/* ==========================================================================
+   CSS Override Mode
+   ========================================================================== */
 
-  .typography-css-override .document-content {
-    /* When CSS override is enabled, all preset styles are ignored */
-    /* and user-provided custom_css is injected instead */
-  }
+.typography-css-override .document-content {
+  /* When CSS override is enabled, all preset styles are ignored */
+  /* and user-provided custom_css is injected instead */
+}
 
-  /* Highlight colors for annotations (shared between presets) */
-  .highlight-underline {
-    text-decoration: none;
-    border-bottom: 2px solid var(--highlight-color, #ffeb3b);
-  }
+/* Highlight colors for annotations (shared between presets) */
+.highlight-underline {
+  text-decoration: none;
+  border-bottom: 2px solid var(--highlight-color, #ffeb3b);
+}
 
-  .highlight-square {
-    background-color: var(--highlight-color, #ffeb3b);
-    padding: 0 2px;
-    border-radius: 2px;
-  }
+.highlight-square {
+  background-color: var(--highlight-color, #ffeb3b);
+  padding: 0 2px;
+  border-radius: 2px;
+}

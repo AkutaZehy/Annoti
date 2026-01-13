@@ -176,3 +176,71 @@
 .light-theme .text-viewer::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }
+
+/* Light theme annotation list (list-container is inside sidebar) */
+.light-theme .list-container .title {
+  color: var(--text-primary);
+}
+
+.light-theme .list-container .card {
+  background: var(--bg-tertiary);
+  border-color: transparent;
+}
+
+.light-theme .list-container .card:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+
+.light-theme .list-container .card-user {
+  color: var(--accent);
+}
+
+.light-theme .list-container .btn-icon {
+  color: var(--text-tertiary);
+}
+
+.light-theme .list-container .btn-icon:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.light-theme .list-container .delete-btn:hover {
+  color: #d32f2f;
+}
+
+.light-theme .list-container .card-quote {
+  color: var(--text-secondary);
+}
+
+.light-theme .list-container .card-note {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.light-theme .list-container .card-note.empty-note {
+  color: var(--text-tertiary);
+}
+
+.light-theme .list-container .note-input {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.light-theme .list-container .save-btn {
+  background: var(--accent);
+  color: var(--btn-primary-text);
+}
+
+.light-theme .list-container .cancel-btn {
+  color: var(--text-secondary);
+}
+
+.light-theme .list-container .cancel-btn:hover {
+  color: var(--text-primary);
+}
+
+.light-theme .list-container .empty-state {
+  color: var(--text-tertiary);
+}

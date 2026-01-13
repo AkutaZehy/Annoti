@@ -4,8 +4,9 @@
   line-height: 1.6;
   font-weight: 400;
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* 颜色由主题类定义，这里不设置默认值 */
+  background-color: var(--bg-primary, #242424);
+  color: var(--text-primary, rgba(255, 255, 255, 0.87));
 }
 
 body,

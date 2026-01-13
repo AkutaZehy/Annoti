@@ -90,7 +90,7 @@ defineProps<{
   display: inline-block;
   width: 0.5em;
   height: 0.5em;
-  background: #666;
+  background: var(--text-tertiary, #666);
   border-radius: 50%;
   margin: 0 0.1em;
 }
@@ -107,15 +107,15 @@ defineProps<{
 }
 
 .text-viewer::-webkit-scrollbar-track {
-  background: var(--bg-primary, #242424);
+  background: var(--scrollbar-track, #242424);
 }
 
 .text-viewer::-webkit-scrollbar-thumb {
-  background: var(--border, #444);
+  background: var(--scrollbar-thumb, #444);
   border-radius: 5px;
 }
 
 .text-viewer::-webkit-scrollbar-thumb:hover {
-  background: var(--border-light, #555);
+  background: var(--scrollbar-thumb-hover, #555);
 }
 </style>

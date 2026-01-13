@@ -53,8 +53,7 @@ const HIGHLIGHT_COLOR = '#ffd700';
 const openAnnotationDialog = (
     text: string,
     anchors: AnnotationAnchor[],
-    id: string,
-    _color: string
+    id: string
 ) => {
     annotationDialogData.value = {
         selectedText: text,
@@ -280,7 +279,7 @@ const handleHighlight = async () => {
     });
 
     // 打开注释对话框（不再使用 prompt）
-    openAnnotationDialog(text, anchors, annotationId, HIGHLIGHT_COLOR);
+    openAnnotationDialog(text, anchors, annotationId);
 
     // 清空选择
     selection.removeAllRanges();

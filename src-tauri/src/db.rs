@@ -85,8 +85,8 @@ pub struct I18nSettingsRecord {
 pub enum AnnotationPackage {
     // 新格式：批量导入
     Batch(BatchPackage),
-    // 旧格式：单个注解（兼容）
-    Single(SinglePackage),
+    // 旧格式：单个注解（兼容）- 使用 Box 减少内存开销
+    Single(Box<SinglePackage>),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -302,6 +302,7 @@ pub fn save_document(conn: &Connection, path: &str, content: &str) -> Result<Doc
     })
 }
 
+#[allow(dead_code)]
 pub fn delete_document(conn: &Connection, doc_id: &str) -> Result<(), String> {
     // 先删除关联的注解
     conn.execute("DELETE FROM annotations WHERE document_id = ?", params![doc_id])
@@ -329,7 +330,7 @@ pub fn get_annotations_by_doc(conn: &Connection, doc_id: &str) -> Result<Vec<Ann
     while let Ok(row) = rows.next() {
         match row {
             Some(r) => {
-                results.push(row_to_annotation(&r)?);
+                results.push(row_to_annotation(r)?);
             }
             None => break,
         }
@@ -347,7 +348,7 @@ pub fn get_annotation_by_id(conn: &Connection, id: &str) -> Result<Option<Annota
     let mut rows = stmt.query([id]).map_err(|e| e.to_string())?;
 
     if let Some(row) = rows.next().map_err(|e| e.to_string())? {
-        Ok(Some(row_to_annotation(&row)?))
+        Ok(Some(row_to_annotation(row)?))
     } else {
         Ok(None)
     }
@@ -582,6 +583,7 @@ pub fn export_as_html(conn: &Connection, doc_id: &str, anno_ids: &[String], cont
     Ok(html)
 }
 
+#[allow(dead_code)]
 fn markdown_to_html(markdown: &str) -> String {
     // 简化版：实际应集成 marked 或 pulldown-cmark
     let mut html = markdown
@@ -617,7 +619,7 @@ fn markdown_to_html(markdown: &str) -> String {
     html
 }
 
-fn generate_readonly_html(doc_name: &str, content: &str, annotations: &[AnnotationRecord]) -> String {
+fn generate_readonly_html(_doc_name: &str, content: &str, annotations: &[AnnotationRecord]) -> String {
     let mut notes_html = String::new();
 
     for anno in annotations {
@@ -646,7 +648,6 @@ fn generate_readonly_html(doc_name: &str, content: &str, annotations: &[Annotati
     }
 
     let payload = serde_json::to_string(&annotations).unwrap_or_default();
-    let escaped_doc_name = escape_html(doc_name);
 
     // Note: Use format! with HTML and manually concatenate to avoid issues with {} in script
     let html = format!(r#"<!DOCTYPE html>
@@ -844,7 +845,7 @@ pub fn migrate_sidecar_files(conn: &Connection, base_dir: &str) -> Result<(), St
         }
 
         // 只处理 .ann 文件
-        if path.extension().and_then(|e| Some(e.to_str()?)) != Some("ann") {
+        if path.extension().and_then(|e| e.to_str()) != Some("ann") {
             continue;
         }
 

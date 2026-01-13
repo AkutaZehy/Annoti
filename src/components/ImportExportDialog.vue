@@ -54,7 +54,7 @@ const handleImport = async () => {
 
         if (selected === null) return;
 
-        const path = typeof selected === 'string' ? selected : (selected as any).path;
+        const path = typeof selected === 'string' ? selected : (selected as { path?: string }).path ?? '';
         const file = new File([await invoke('read_file_content', { path })], 'annotation.annpkg');
 
         loading.value = true;
@@ -88,7 +88,7 @@ const exportAllAnnpkg = async () => {
         if (!savePath) return;
 
         loading.value = true;
-        let combined: any = {
+        let combined: { version: string; exported_at: number; annotations: unknown[] } = {
             version: "1.0",
             exported_at: Date.now(),
             annotations: []

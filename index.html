@@ -1,10 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light-theme">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri + Vue + Typescript App</title>
+    <style>
+      /* 内联样式确保在 JS 加载前就有正确主题 */
+      .light-theme {
+        --bg-primary: #ffffff;
+        --text-primary: #1a1a1a;
+        background-color: #ffffff;
+        color: #1a1a1a;
+      }
+      .dark-theme {
+        --bg-primary: #242424;
+        --text-primary: #e0e0e0;
+        background-color: #242424;
+        color: #e0e0e0;
+      }
+    </style>
   </head>
 
   <body>

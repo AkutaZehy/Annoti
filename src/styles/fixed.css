@@ -57,7 +57,7 @@
 .typography-fixed .line-content .tab {
   display: inline-block;
   width: calc(var(--fixed-tab-size) * 0.6em);
-  border-right: 1px solid #444;
+  border-right: 1px solid var(--border, #444);
   margin-right: calc(var(--fixed-tab-size) * 0.6em - 1px);
 }
 
@@ -66,7 +66,7 @@
   display: inline-block;
   width: 0.5em;
   height: 0.5em;
-  background: #666;
+  background: var(--text-tertiary, #666);
   border-radius: 50%;
   margin: 0 0.1em;
 }
@@ -79,21 +79,21 @@
 /* Paragraph markers */
 .typography-fixed .text-line.has-paragraph-marker::before {
   content: "¶";
-  color: #555;
+  color: var(--text-secondary, #555);
   margin-right: 0.5em;
   font-size: 0.8em;
 }
 
 /* Soft wrap indicator for long lines */
 .typography-fixed .text-line .wrap-indicator {
-  color: #666;
+  color: var(--text-tertiary, #666);
   font-size: 0.7em;
   margin-left: 0.5em;
 }
 
 /* Markdown syntax highlighting in fixed mode */
 .typography-fixed .markdown-heading {
-  color: #6caafc;
+  color: var(--link-color, #6caafc);
   font-weight: bold;
 }
 
@@ -107,13 +107,13 @@
 
 .typography-fixed .markdown-code {
   font-family: var(--fixed-font-family);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--code-bg, rgba(255, 255, 255, 0.1));
   padding: 0 0.2em;
   border-radius: 2px;
 }
 
 .typography-fixed .markdown-link {
-  color: #6caafc;
+  color: var(--link-color, #6caafc);
   text-decoration: none;
 }
 
@@ -138,16 +138,16 @@
 }
 
 .typography-fixed .document-viewer::-webkit-scrollbar-track {
-  background: #242424;
+  background: var(--scrollbar-track, #242424);
 }
 
 .typography-fixed .document-viewer::-webkit-scrollbar-thumb {
-  background: #444;
+  background: var(--scrollbar-thumb, #444);
   border-radius: 5px;
 }
 
 .typography-fixed .document-viewer::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--scrollbar-thumb-hover, #555);
 }
 
 /* Line width indicator (ruler) */
@@ -156,18 +156,18 @@
   justify-content: flex-start;
   padding: 5px 40px;
   font-size: 10px;
-  color: #666;
-  border-bottom: 1px solid #333;
+  color: var(--text-tertiary, #666);
+  border-bottom: 1px solid var(--border, #333);
 }
 
 .typography-fixed .ruler .tick {
   width: calc(33 * 0.6em); /* Approximate width of 33 units */
-  border-left: 1px solid #444;
+  border-left: 1px solid var(--border, #444);
   padding-left: 2px;
 }
 
 .typography-fixed .ruler .tick.major {
-  border-left-color: #666;
+  border-left-color: var(--text-secondary, #666);
   font-weight: bold;
 }
 
@@ -178,13 +178,13 @@
   left: 0;
   right: 0;
   height: 24px;
-  background: #1a1a1a;
-  border-top: 1px solid #333;
+  background: var(--bg-tertiary, #1a1a1a);
+  border-top: 1px solid var(--border, #333);
   display: flex;
   align-items: center;
   padding: 0 1em;
   font-size: 12px;
-  color: #888;
+  color: var(--text-tertiary, #888);
 }
 
 .typography-fixed .status-bar .position {

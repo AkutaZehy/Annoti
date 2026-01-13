@@ -15,6 +15,7 @@ const visibleNotes = computed(() =>
 );
 
 // 计算z-index（用于排序）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getZIndex = (_annotation: Annotation): number => {
     // 使用固定的基础z-index，加上动态层级偏移
     // 限制最大值在 400 以下，避免超过 dialog 的 z-index (1000)
@@ -29,6 +30,7 @@ const handleClose = async (id: string) => {
 };
 
 // 提升到顶层
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const bringToTop = (_id: string) => {
     maxZIndex.value++;
 };

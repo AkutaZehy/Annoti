@@ -65,7 +65,7 @@ const onLocateRequest = (domId: string) => {
     viewerRef.value?.scrollToHighlight(domId);
 };
 
-const onDeleteAnnotation = (annotation: { id: string; anchor: any[] }) => {
+const onDeleteAnnotation = (annotation: { id: string; anchor: import('../types').AnnotationAnchor[] }) => {
     viewerRef.value?.removeHighlight(annotation.id);
 };
 
