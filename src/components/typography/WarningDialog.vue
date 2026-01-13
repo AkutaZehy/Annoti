@@ -146,7 +146,7 @@ const emit = defineEmits<{
   cursor: not-allowed;
 }
 
-/* Transition */
+/* 过渡动画 */
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.2s ease;

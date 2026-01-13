@@ -8,9 +8,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+# `_lib` 后缀看似冗余，但为了使库名称唯一且不会与 bin 名称冲突是必要的。
+# 这似乎只在 Windows 上是问题，参见 https://github.com/rust-lang/cargo/issues/8519
 name = "annoti_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 

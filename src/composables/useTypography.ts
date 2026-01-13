@@ -2,23 +2,11 @@
    useTypography Composable
    ============================================================================
 
-   Reactive typography state management:
-   - Loads/saves typography.yaml config via Rust backend
-   - Updates CSS custom properties reactively
-   - Provides computed getters for preset values
-   - Handles CSS override mode
-
-   Usage:
-     const { config, preset, updateConfig } = useTypography();
-
-     // Get current preset values
-     const fontFamily = preset.value.font_family;
-
-     // Switch preset
-     updateConfig({ preset: 'fixed' });
-
-     // Enable CSS override
-     updateConfig({ use_css_override: true, custom_css: '...' });
+   响应式排版状态管理：
+   - 通过 Rust 后端加载/保存 typography.yaml 配置
+   - 响应式更新 CSS 自定义属性
+   - 为预设值提供计算属性
+   - 处理 CSS 覆盖模式
 */
 
 import { ref, computed, watch, onMounted } from 'vue';
@@ -34,50 +22,44 @@ import {
   mergeTypographyConfig,
 } from '@/types/typography';
 
-// ============================================================================
-// State
-// ============================================================================
+// 状态
 
 const config = ref<TypographyConfig>(createDefaultTypographyConfig());
 const isLoading = ref(false);
 const isSaving = ref(false);
 const error = ref<string | null>(null);
 
-// ============================================================================
-// Computed Properties
-// ============================================================================
+// 计算属性
 
-/** Get current preset name */
+/** 获取当前预设名称 */
 export function useTypography() {
   const presetName = computed(() => config.value.preset);
 
-  /** Check if CSS override is enabled */
+  /** 检查是否启用了 CSS 覆盖 */
   const cssOverride = computed(() => config.value.use_css_override);
 
-  /** Get custom CSS string */
+  /** 获取自定义 CSS 字符串 */
   const customCss = computed(() => config.value.custom_css);
 
-  /** Check if current preset is 'fixed' mode */
+  /** 检查当前预设是否为 'fixed' 模式 */
   const isFixedMode = computed(() => config.value.preset === 'fixed');
 
-  /** Get the active preset configuration (pro mode uses original preset for compatibility) */
+  /** 获取活动预设配置（pro 模式使用 original 预设以保持兼容性） */
   const activePreset = computed<OriginalPreset | FixedPreset>(() => {
-    // pro mode doesn't have a preset - it uses custom CSS
+    // pro 模式没有预设 - 它使用自定义 CSS
     const presetName = config.value.preset === 'pro' ? 'original' : config.value.preset;
     return config.value.presets[presetName];
   });
 
-  /** Get original preset */
+  /** 获取 original 预设 */
   const originalPreset = computed(() => config.value.presets.original);
 
-  /** Get fixed preset */
+  /** 获取 fixed 预设 */
   const fixedPreset = computed(() => config.value.presets.fixed);
 
-  // =========================================================================
-  // CSS Variable Helpers
-  // =========================================================================
+  // CSS 变量辅助函数
 
-  /** Get CSS variables for original preset */
+  /** 获取 original 预设的 CSS 变量 */
   const originalCssVars = computed(() => {
     const p = config.value.presets.original;
     return {
@@ -113,7 +95,7 @@ export function useTypography() {
     };
   });
 
-  /** Get CSS variables for fixed preset */
+  /** 获取 fixed 预设的 CSS 变量 */
   const fixedCssVars = computed(() => {
     const p = config.value.presets.fixed;
     return {
@@ -137,10 +119,10 @@ export function useTypography() {
     };
   });
 
-  /** Get all CSS variables based on current preset */
+  /** 获取所有 CSS 变量（基于当前预设） */
   const allCssVars = computed(() => {
     if (config.value.use_css_override) {
-      // When CSS override is on, only custom CSS is applied
+      // 当 CSS 覆盖开启时，只应用自定义 CSS
       return {};
     }
 
@@ -154,36 +136,34 @@ export function useTypography() {
     return originalCssVars.value;
   });
 
-  // =========================================================================
-  // Actions
-  // =========================================================================
+  // 操作
 
   /**
-   * Load typography config from file
+   * 从文件加载排版配置
    */
   async function loadConfig(): Promise<void> {
     isLoading.value = true;
     error.value = null;
 
     try {
-      // Check if file exists by getting the path and checking
+      // 通过获取路径并检查文件是否存在
       const path = await invoke<string>('get_typography_path');
       const exists = await invoke<boolean>('file_exists', { path });
 
       if (exists) {
-        // Read the file using the proper path
+        // 使用正确的路径读取文件
         const content = await invoke<string>('load_typography_config');
         const parsed = parseYamlConfig(content);
         config.value = mergeTypographyConfig(parsed, config.value);
       } else {
-        // Use defaults
+        // 使用默认值
         config.value = createDefaultTypographyConfig();
       }
 
-      // Apply CSS variables
+      // 应用 CSS 变量
       applyCssVariables(allCssVars.value);
     } catch (err) {
-      error.value = `Failed to load typography config: ${err}`;
+      error.value = `加载排版配置失败: ${err}`;
       console.error(error.value);
     } finally {
       isLoading.value = false;
@@ -191,7 +171,7 @@ export function useTypography() {
   }
 
   /**
-   * Save typography config to file
+   * 保存排版配置到文件
    */
   async function saveConfig(): Promise<void> {
     isSaving.value = true;
@@ -201,7 +181,7 @@ export function useTypography() {
       const yaml = serializeToYaml(config.value);
       await invoke('save_typography_config', { content: yaml });
     } catch (err) {
-      error.value = `Failed to save typography config: ${err}`;
+      error.value = `保存排版配置失败: ${err}`;
       console.error(error.value);
     } finally {
       isSaving.value = false;
@@ -209,22 +189,22 @@ export function useTypography() {
   }
 
   /**
-   * Update config partially
-   * Note: CSS is applied via watcher, not here
+   * 部分更新配置
+   * 注意：CSS 通过 watcher 应用，不在这里应用
    */
   async function updateConfig(updates: Partial<TypographyConfig>): Promise<void> {
-    // Merge updates
+    // 合并更新
     const newConfig = mergeTypographyConfig(updates, config.value);
     config.value = newConfig;
 
-    // CSS variables will be applied by the watcher
+    // CSS 变量将通过 watcher 应用
 
-    // Save to file
+    // 保存到文件
     await saveConfig();
   }
 
   /**
-   * Switch preset
+   * 切换预设
    * 直接更新配置（通过 watcher 应用 CSS），只在用户确认后调用
    */
   async function switchPreset(preset: PresetName): Promise<void> {
@@ -232,21 +212,21 @@ export function useTypography() {
   }
 
   /**
-   * Toggle CSS override mode
+   * 切换 CSS 覆盖模式
    */
   async function toggleCssOverride(enabled: boolean): Promise<void> {
     await updateConfig({ use_css_override: enabled });
   }
 
   /**
-   * Update custom CSS
+   * 更新自定义 CSS
    */
   async function setCustomCss(css: string): Promise<void> {
     await updateConfig({ custom_css: css });
   }
 
   /**
-   * Update original preset values
+   * 更新 original 预设值
    */
   async function updateOriginalPreset(updates: Partial<OriginalPreset>): Promise<void> {
     await updateConfig({
@@ -258,7 +238,7 @@ export function useTypography() {
   }
 
   /**
-   * Update fixed preset values
+   * 更新 fixed 预设值
    */
   async function updateFixedPreset(updates: Partial<FixedPreset>): Promise<void> {
     await updateConfig({
@@ -270,7 +250,7 @@ export function useTypography() {
   }
 
   /**
-   * Reset to defaults
+   * 重置为默认值
    */
   async function resetToDefaults(): Promise<void> {
     config.value = createDefaultTypographyConfig();
@@ -279,18 +259,16 @@ export function useTypography() {
   }
 
   /**
-   * Export config as YAML string
+   * 导出配置为 YAML 字符串
    */
   function exportConfig(): string {
     return serializeToYaml(config.value);
   }
 
-  // =========================================================================
-  // CSS Variable Application
-  // =========================================================================
+  // CSS 变量应用
 
   /**
-   * Apply CSS custom properties to document root
+   * 将 CSS 自定义属性应用到文档根元素
    */
   function applyCssVariables(vars: Record<string, string>): void {
     if (typeof document === 'undefined') return;
@@ -302,18 +280,16 @@ export function useTypography() {
     }
   }
 
-  // =========================================================================
-  // YAML Serialization
-  // =========================================================================
+  // YAML 序列化
 
   function parseYamlConfig(yaml: string): Partial<TypographyConfig> {
-    // Simple YAML parser for typography config
-    // Supports: strings, numbers, booleans, nested objects, arrays
+    // 排版配置的简单 YAML 解析器
+    // 支持：字符串、数字、布尔值、嵌套对象、数组
     try {
-      // Try JSON first (YAML is a superset)
+      // 先尝试 JSON（YAML 是超集）
       return JSON.parse(yaml);
     } catch {
-      // Simple YAML parsing
+      // 简单 YAML 解析
       const result: Record<string, unknown> = {};
       const lines = yaml.split('\n');
       let currentSection: Record<string, unknown> | null = null;
@@ -324,25 +300,25 @@ export function useTypography() {
       for (const line of lines) {
         const trimmed = line.trim();
 
-        // Check if entering custom_css block (YAML multiline string)
+        // 检查是否进入 custom_css 块（YAML 多行字符串）
         if (trimmed.startsWith('custom_css:')) {
           inCustomCssBlock = true;
           customCssLines = [];
           continue;
         }
 
-        // Handle content inside custom_css block
+        // 处理 custom_css 块内部的内容
         if (inCustomCssBlock) {
-          // Check if this is a new top-level field (not continuation of custom_css)
+          // 检查这是否是一个新的顶级字段（不是 custom_css 的延续）
           if (/^\w+:\s*/.test(trimmed) && !trimmed.startsWith('  ') && !trimmed.startsWith('\t')) {
-            // End of custom_css block, save accumulated lines
+            // custom_css 块结束，保存累积的行
             if (customCssLines.length > 0) {
               result.custom_css = customCssLines.join('\n');
             }
             inCustomCssBlock = false;
             customCssLines = [];
 
-            // Parse this new field
+            // 解析这个新字段
             const match = trimmed.match(/^(\w+):\s*(.*)$/);
             if (match) {
               const key = match[1];
@@ -369,17 +345,17 @@ export function useTypography() {
             continue;
           }
 
-          // Continuation of custom_css block (indented lines)
+          // custom_css 块的延续（缩进行）
           if (trimmed || customCssLines.length > 0) {
-            customCssLines.push(line); // Keep original line (without leading spaces)
+            customCssLines.push(line); // 保留原始行（不带前导空格）
           }
           continue;
         }
 
-        // Skip empty lines and pure comments (starting with # after optional spaces)
+        // 跳过空行和纯注释（可选空格后以 # 开头）
         if (!trimmed || /^#/.test(trimmed)) continue;
 
-        // Check for section headers (presets.original / presets.fixed)
+        // 检查节标题（presets.original / presets.fixed）
         if (trimmed.startsWith('presets:')) {
           continue;
         }
@@ -398,7 +374,7 @@ export function useTypography() {
           continue;
         }
 
-        // Parse key-value pairs
+        // 解析键值对
         const match = trimmed.match(/^(\w+):\s*(.*)$/);
         if (match) {
           const key = match[1];
@@ -406,7 +382,7 @@ export function useTypography() {
 
           let value: string | number | boolean = valueStr;
 
-          // Remove quotes
+          // 移除引号
           if ((valueStr.startsWith('"') && valueStr.endsWith('"')) ||
               (valueStr.startsWith("'") && valueStr.endsWith("'"))) {
             value = valueStr.slice(1, -1);
@@ -430,7 +406,7 @@ export function useTypography() {
         }
       }
 
-      // Handle custom_css block at end of file
+      // 处理文件末尾的 custom_css 块
       if (inCustomCssBlock && customCssLines.length > 0) {
         result.custom_css = customCssLines.join('\n');
       }
@@ -440,7 +416,7 @@ export function useTypography() {
   }
 
   function serializeToYaml(cfg: TypographyConfig): string {
-    // Simple YAML serializer
+    // 简单的 YAML 序列化器
     let yaml = '';
 
     yaml += `# Typography Configuration\n`;
@@ -460,11 +436,11 @@ export function useTypography() {
 
     yaml += `\npresets:\n`;
 
-    // Original preset
+    // Original 预设
     yaml += `  original:\n`;
     yaml += yamlObject('    ', cfg.presets.original as unknown as Record<string, unknown>, 2);
 
-    // Fixed preset
+    // Fixed 预设
     yaml += `  fixed:\n`;
     yaml += yamlObject('    ', cfg.presets.fixed as unknown as Record<string, unknown>, 2);
 
@@ -481,7 +457,7 @@ export function useTypography() {
         result += `${indent}${key}:\n`;
         result += yamlObject(prefix, value as Record<string, unknown>, depth + 1);
       } else if (Array.isArray(value)) {
-        // Skip arrays for now
+        // 目前跳过数组
       } else if (typeof value === 'string') {
         if (value.includes('\n')) {
           result += `${indent}${key}: |\n`;
@@ -501,31 +477,27 @@ export function useTypography() {
     return result;
   }
 
-  // =========================================================================
-  // Lifecycle
-  // =========================================================================
+  // 生命周期
 
   onMounted(() => {
     loadConfig();
   });
 
-  // Watch for changes and apply CSS
+  // 监听变化并应用 CSS
   watch(allCssVars, (newVars) => {
     applyCssVariables(newVars);
   });
 
-  // =========================================================================
-  // Return
-  // =========================================================================
+  // 返回值
 
   return {
-    // State
+    // 状态
     config,
     isLoading,
     isSaving,
     error,
 
-    // Computed
+    // 计算属性
     presetName,
     cssOverride,
     customCss,
@@ -535,7 +507,7 @@ export function useTypography() {
     fixedPreset,
     allCssVars,
 
-    // Actions
+    // 操作
     loadConfig,
     saveConfig,
     updateConfig,
@@ -547,7 +519,7 @@ export function useTypography() {
     resetToDefaults,
     exportConfig,
 
-    // CSS Variables (for manual application if needed)
+    // CSS 变量（用于手动应用）
     originalCssVars,
     fixedCssVars,
   };

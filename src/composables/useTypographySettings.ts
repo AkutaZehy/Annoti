@@ -4,32 +4,16 @@
 
    排版设置的状态管理：
    - 模式选择 (original/fixed/pro)
-   - Pending changes 追踪
+   - 待处理更改追踪
    - 模式切换警告
    - 关闭警告
-
-   Usage:
-     const {
-       activeMode,
-       pendingOriginal,
-       pendingFixed,
-       customCssInput,
-       hasPendingChanges,
-       changedFields,
-       detectChanges,
-       handleModeChange,
-       applyPendingChanges,
-       discardAndClose,
-     } = useTypographySettings();
 */
 
 import { ref, computed, watch } from 'vue';
 import { useTypography } from './useTypography';
 import type { PresetName } from '@/types/typography';
 
-// ============================================================================
-// Types
-// ============================================================================
+// 类型定义
 
 export type TypographyMode = 'original' | 'fixed' | 'pro';
 
@@ -83,9 +67,7 @@ export interface ChangedField {
   newValue: string | number | boolean;
 }
 
-// ============================================================================
 // Composables
-// ============================================================================
 
 export function useTypographySettings() {
   const {
@@ -104,19 +86,17 @@ export function useTypographySettings() {
     saveConfig,
   } = useTypography();
 
-  // =========================================================================
-  // State
-  // =========================================================================
+  // 状态
 
   /** 当前选中的模式: original | fixed | pro */
   const activeMode = ref<TypographyMode>(
     cssOverride.value ? 'pro' : presetName.value as TypographyMode
   );
 
-  /** CSS 输入（专业模式） - 修复: 初始化时确保同步 */
+  /** CSS 输入（专业模式） - 初始化时确保同步 */
   const customCssInput = ref(customCss.value);
 
-  /** Pending values for original preset */
+  /** original 预设的待处理值 */
   const pendingOriginal = ref<PendingOriginalPreset>({
     font_family: originalPreset.value.font_family,
     font_size: originalPreset.value.font_size,
@@ -135,7 +115,7 @@ export function useTypographySettings() {
     },
   });
 
-  /** Pending values for fixed preset */
+  /** fixed 预设的待处理值 */
   const pendingFixed = ref<PendingFixedPreset>({
     line_width: fixedPreset.value.line_width,
     cjk_char_width: fixedPreset.value.cjk_char_width,
@@ -164,11 +144,9 @@ export function useTypographySettings() {
   const showCloseWarning = ref(false); // 关闭对话框时的警告
   const pendingTargetMode = ref<TypographyMode | null>(null); // 目标模式（用于警告后切换）
 
-  // =========================================================================
-  // Computed
-  // =========================================================================
+  // 计算属性
 
-  /** CSS 是否有实际更改（修复: 标准化换行符后比较） */
+  /** CSS 是否有实际更改（标准化换行符后比较） */
   const hasCssChange = computed(() => {
     const normalize = (str: string) => str.replace(/\r\n/g, '\n').trim();
     return normalize(customCssInput.value) !== normalize(customCss.value);
@@ -196,15 +174,13 @@ export function useTypographySettings() {
   /** 当前是否是专业模式 */
   const isProMode = computed(() => activeMode.value === 'pro');
 
-  // =========================================================================
-  // Detection Functions
-  // =========================================================================
+  // 检测函数
 
   /** 检测字段更改并更新 changedFields（包含所有可检测字段） */
   function detectChanges(): void {
     const changes: ChangedField[] = [];
 
-    // Original preset changes
+    // Original 预设更改
     if (pendingOriginal.value.font_family !== originalPreset.value.font_family) {
       changes.push({
         category: 'Original',
@@ -286,7 +262,7 @@ export function useTypographySettings() {
       });
     }
 
-    // Fixed preset changes
+    // Fixed 预设更改
     if (pendingFixed.value.line_width !== fixedPreset.value.line_width) {
       changes.push({
         category: 'Fixed',
@@ -427,14 +403,12 @@ export function useTypographySettings() {
     changedFields.value = changes;
   }
 
-  // =========================================================================
-  // Sync Functions
-  // =========================================================================
+  // 同步函数
 
   /** 同步 pending 状态到当前配置（不保存到文件） */
   function syncPendingState(): void {
     customCssInput.value = customCss.value;
-    // Reset pending values to current config
+    // 将待处理值重置为当前配置
     pendingOriginal.value = {
       font_family: originalPreset.value.font_family,
       font_size: originalPreset.value.font_size,
@@ -471,12 +445,12 @@ export function useTypographySettings() {
       cjk_detection: { ...fixedPreset.value.cjk_detection },
       show_whitespace: fixedPreset.value.show_whitespace,
     };
-    // Reset active mode
+    // 重置活动模式
     activeMode.value = cssOverride.value ? 'pro' : (presetName.value as TypographyMode);
     changedFields.value = [];
   }
 
-  /** 应用 original preset 的更改到配置 */
+  /** 应用 original 预设的更改到配置 */
   function applyOriginalPresetChanges(): void {
     // 获取当前预设的完整值，然后合并待处理的更改
     const current = originalPreset.value;
@@ -501,7 +475,7 @@ export function useTypographySettings() {
     });
   }
 
-  /** 应用 fixed preset 的更改到配置 */
+  /** 应用 fixed 预设的更改到配置 */
   function applyFixedPresetChanges(): void {
     updateFixedPreset({
       line_width: pendingFixed.value.line_width,
@@ -530,23 +504,21 @@ export function useTypographySettings() {
       await setCustomCss(customCssInput.value);
     }
 
-    // Apply preset changes
+    // 应用预设更改
     if (activeMode.value === 'original') {
       applyOriginalPresetChanges();
     } else if (activeMode.value === 'fixed') {
       applyFixedPresetChanges();
     }
 
-    // Save to file
+    // 保存到文件
     await saveConfig();
 
-    // Reset change tracking
+    // 重置更改追踪
     changedFields.value = [];
   }
 
-  // =========================================================================
-  // Mode Change Handlers
-  // =========================================================================
+  // 模式切换处理器
 
   /** 处理模式切换 - 总是显示警告（切换到当前模式除外） */
   function handleModeChange(newMode: TypographyMode): void {
@@ -598,9 +570,7 @@ export function useTypographySettings() {
     pendingTargetMode.value = null;
   }
 
-  // =========================================================================
-  // Close Handlers
-  // =========================================================================
+  // 关闭处理器
 
   /** 检查是否有未保存更改（供外部使用） */
   function checkHasPendingChanges(): boolean {
@@ -612,9 +582,7 @@ export function useTypographySettings() {
     syncPendingState();
   }
 
-  // =========================================================================
-  // Reset Handler
-  // =========================================================================
+  // 重置处理器
 
   /** 重置为默认设置 */
   async function handleReset(): Promise<void> {
@@ -623,11 +591,9 @@ export function useTypographySettings() {
     detectChanges();
   }
 
-  // =========================================================================
-  // Watchers
-  // =========================================================================
+  // 监听器
 
-  /** 修复: 监听 customCss 变化，同步到 customCssInput */
+  /** 监听 customCss 变化，同步到 customCssInput */
   watch(customCss, (newVal) => {
     customCssInput.value = newVal;
   });
@@ -637,12 +603,10 @@ export function useTypographySettings() {
     detectChanges();
   }, { deep: true });
 
-  // =========================================================================
-  // Return
-  // =========================================================================
+  // 返回值
 
   return {
-    // State
+    // 状态
     activeMode,
     pendingOriginal,
     pendingFixed,
@@ -652,7 +616,7 @@ export function useTypographySettings() {
     showCloseWarning,
     pendingTargetMode,
 
-    // Computed
+    // 计算属性
     hasPendingChanges,
     pendingCount,
     hasCssChange,
@@ -660,7 +624,7 @@ export function useTypographySettings() {
     isProMode,
     isSaving,
 
-    // Handlers
+    // 处理器
     handleModeChange,
     performModeSwitch,
     confirmSwitchAnyway,

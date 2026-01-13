@@ -2,22 +2,17 @@
    useWindow Composable
    ============================================================================
 
-   Window state management:
-   - Loads/saves window size, position, and maximized state
-   - Calculates 80% of screen size on first run
-   - Provides methods to update window settings
-
-   Usage:
-     const { windowSize, windowPosition, isMaximized, saveWindowState, initWindow } = useWindow();
+   窗口状态管理：
+   - 加载/保存窗口尺寸、位置和最大化状态
+   - 首次运行时计算 80% 屏幕大小
+   - 提供更新窗口设置的方法
 */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize, LogicalPosition } from '@tauri-apps/api/window';
 
-// ============================================================================
-// State
-// ============================================================================
+// 状态
 
 const windowWidth = ref(800);
 const windowHeight = ref(600);
@@ -29,29 +24,25 @@ const isFirstRun = ref(true);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-// ============================================================================
-// Computed Properties
-// ============================================================================
+// 计算属性
 
 export function useWindow() {
-  /** Get window size as reactive object */
+  /** 获取窗口尺寸作为响应式对象 */
   const windowSize = computed(() => ({
     width: windowWidth.value,
     height: windowHeight.value,
   }));
 
-  /** Get window position as reactive object */
+  /** 获取窗口位置作为响应式对象 */
   const windowPosition = computed(() => ({
     x: windowX.value,
     y: windowY.value,
   }));
 
-  // =========================================================================
-  // Actions
-  // =========================================================================
+  // 操作
 
   /**
-   * Load window settings from storage
+   * 从存储加载窗口设置
    */
   async function loadWindowSettings(): Promise<void> {
     isLoading.value = true;
@@ -69,7 +60,7 @@ export function useWindow() {
         isFirstRun.value = false;
       }
     } catch (err) {
-      error.value = `Failed to load window settings: ${err}`;
+      error.value = `加载窗口设置失败: ${err}`;
       console.error(error.value);
     } finally {
       isLoading.value = false;
@@ -77,7 +68,7 @@ export function useWindow() {
   }
 
   /**
-   * Save window settings to storage
+   * 保存窗口设置到存储
    */
   async function saveWindowSettings(): Promise<void> {
     try {
@@ -89,7 +80,7 @@ export function useWindow() {
         window_maximized: isMaximized.value,
       };
 
-      // Merge with existing settings
+      // 与现有设置合并
       const existingJson = await invoke<string | null>('load_ui_settings');
       if (existingJson) {
         const existing = JSON.parse(existingJson);
@@ -98,16 +89,16 @@ export function useWindow() {
 
       await invoke('save_ui_settings', { settingsJson: JSON.stringify(settings) });
     } catch (err) {
-      error.value = `Failed to save window settings: ${err}`;
+      error.value = `保存窗口设置失败: ${err}`;
       console.error(error.value);
     }
   }
 
   /**
-   * Calculate 80% of screen size for first run
+   * 首次运行时计算 80% 屏幕大小
    */
   function calculateDefaultSize(): { width: number; height: number } {
-    // Use screen API if available, otherwise use common defaults
+    // 如果屏幕 API 可用则使用，否则使用常见默认值
     const width = Math.floor(window.screen.availWidth * 0.8);
     const height = Math.floor(window.screen.availHeight * 0.8);
 
@@ -118,26 +109,26 @@ export function useWindow() {
   }
 
   /**
-   * Initialize window with saved or default settings
+   * 使用保存的或默认设置初始化窗口
    */
   async function initWindow(): Promise<void> {
     await loadWindowSettings();
 
     if (isFirstRun.value) {
-      // First run: calculate 80% of screen
+      // 首次运行：计算 80% 屏幕大小
       const defaultSize = calculateDefaultSize();
       windowWidth.value = defaultSize.width;
       windowHeight.value = defaultSize.height;
 
-      // Center window
+      // 居中窗口
       windowX.value = Math.floor((window.screen.availWidth - windowWidth.value) / 2);
       windowY.value = Math.floor((window.screen.availHeight - windowHeight.value) / 2);
 
-      // Save initial settings
+      // 保存初始设置
       await saveWindowSettings();
     }
 
-    // Apply settings to Tauri window
+    // 将设置应用到 Tauri 窗口
     try {
       const appWindow = getCurrentWindow();
 
@@ -150,12 +141,12 @@ export function useWindow() {
         await appWindow.maximize();
       }
     } catch (err) {
-      console.error('Failed to apply window settings:', err);
+      console.error('应用窗口设置失败:', err);
     }
   }
 
   /**
-   * Update window size
+   * 更新窗口尺寸
    */
   async function setWindowSize(width: number, height: number): Promise<void> {
     windowWidth.value = width;
@@ -166,12 +157,12 @@ export function useWindow() {
       const appWindow = getCurrentWindow();
       await appWindow.setSize(new LogicalSize(width, height));
     } catch (err) {
-      console.error('Failed to set window size:', err);
+      console.error('设置窗口尺寸失败:', err);
     }
   }
 
   /**
-   * Update window position
+   * 更新窗口位置
    */
   async function setWindowPosition(x: number, y: number): Promise<void> {
     windowX.value = x;
@@ -182,12 +173,12 @@ export function useWindow() {
       const appWindow = getCurrentWindow();
       await appWindow.setPosition(new LogicalPosition(x, y));
     } catch (err) {
-      console.error('Failed to set window position:', err);
+      console.error('设置窗口位置失败:', err);
     }
   }
 
   /**
-   * Toggle maximized state
+   * 切换最大化状态
    */
   async function toggleMaximized(): Promise<void> {
     isMaximized.value = !isMaximized.value;
@@ -203,12 +194,12 @@ export function useWindow() {
         await appWindow.setPosition(new LogicalPosition(windowX.value, windowY.value));
       }
     } catch (err) {
-      console.error('Failed to toggle maximize:', err);
+      console.error('切换最大化失败:', err);
     }
   }
 
   /**
-   * Handle window resize (call this when user resizes window)
+   * 处理窗口调整大小（用户调整窗口大小时调用）
    */
   async function onWindowResized(): Promise<void> {
     try {
@@ -221,19 +212,19 @@ export function useWindow() {
       windowX.value = position.x;
       windowY.value = position.y;
 
-      // Don't save on every resize to avoid excessive IO
-      // Use debounced save in production
+      // 不要在每次调整大小时保存以避免过度 IO
+      // 生产环境应使用防抖保存
     } catch (err) {
-      console.error('Failed to handle resize:', err);
+      console.error('处理调整大小失败:', err);
     }
   }
 
   // =========================================================================
-  // Lifecycle
+  // 生命周期
   // =========================================================================
 
   onMounted(() => {
-    // Listen for window resize events
+    // 监听窗口调整大小事件
     window.addEventListener('resize', onWindowResized);
   });
 
@@ -241,12 +232,10 @@ export function useWindow() {
     window.removeEventListener('resize', onWindowResized);
   });
 
-  // =========================================================================
-  // Return
-  // =========================================================================
+  // 返回值
 
   return {
-    // State
+    // 状态
     windowWidth,
     windowHeight,
     windowX,
@@ -255,11 +244,11 @@ export function useWindow() {
     isLoading,
     error,
 
-    // Computed
+    // 计算属性
     windowSize,
     windowPosition,
 
-    // Actions
+    // 操作
     loadWindowSettings,
     saveWindowSettings,
     calculateDefaultSize,

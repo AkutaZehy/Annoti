@@ -13,7 +13,7 @@ const loading = ref(false);
 const message = ref('');
 const messageType = ref<'success' | 'warning' | 'error'>('success');
 
-// Toast state
+// Toast 状态
 const showToast = ref(false);
 const toastSuccess = ref(true);
 const toastMessage = ref('');
@@ -29,14 +29,14 @@ const close = () => {
     visible.value = false;
 };
 
-// Show toast notification
+// 显示提示通知
 const showExportToast = (success: boolean, msg: string) => {
     toastSuccess.value = success;
     toastMessage.value = msg;
     showToast.value = true;
 };
 
-// Handle toast close
+// 处理提示关闭
 const handleToastClose = () => {
     showToast.value = false;
 };
@@ -192,7 +192,7 @@ defineExpose({ open: openDialog, close });
             </div>
         </div>
 
-        <!-- Export Success Toast -->
+        <!-- 导出成功提示 -->
         <ExportSuccessToast
             :visible="showToast"
             :success="toastSuccess"
@@ -214,7 +214,7 @@ defineExpose({ open: openDialog, close });
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    isolation: isolate; /* Create new stacking context */
+    isolation: isolate; /* 创建新的层叠上下文 */
 }
 
 .dialog {

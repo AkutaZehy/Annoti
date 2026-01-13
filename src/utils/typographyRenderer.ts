@@ -2,23 +2,12 @@
    Typography Renderer
    ============================================================================
 
-   Handles text breaking for the 'fixed' preset:
-   - CJK characters = 1 unit
-   - Non-CJK (Latin/Cyrillic, etc.) = 0.5 unit
-   - Fixed line width (default: 33 units)
-   - Tab expansion
-   - Line numbering
-
-   Usage:
-     import { TypographyRenderer } from '@/utils/typographyRenderer';
-
-     const renderer = new TypographyRenderer({
-       lineWidth: 33,
-       cjkCharWidth: 1.0,
-       nonCjkCharWidth: 0.5,
-     });
-
-     const lines = renderer.render(content);
+   处理 'fixed' 预设的文本换行：
+   - CJK 字符 = 1 单位
+   - 非 CJK（拉丁文、西里尔文等）= 0.5 单位
+   - 固定行宽（默认值：33 单位）
+   - Tab 展开
+   - 行号
 */
 
 import type {
@@ -33,51 +22,51 @@ import {
 } from '@/types/typography';
 
 // ============================================================================
-// Configuration
+// 配置
 // ============================================================================
 
 export interface RendererOptions {
-  /** Character units per line (default: 33) */
+  /** 每行字符单位数（默认值：33） */
   lineWidth: number;
 
-  /** Width of CJK characters (default: 1.0) */
+  /** CJK 字符宽度（默认值：1.0） */
   cjkCharWidth: number;
 
-  /** Width of non-CJK characters (default: 0.5) */
+  /** 非 CJK 字符宽度（默认值：0.5） */
   nonCjkCharWidth: number;
 
-  /** Show line numbers */
+  /** 显示行号 */
   showLineNumbers: boolean;
 
-  /** Escape HTML entities */
+  /** 转义 HTML 实体 */
   escapeHtml: boolean;
 
-  /** Expand tabs to spaces */
+  /** 将 tab 展开为空格 */
   expandTabs: boolean;
 
-  /** Spaces per tab */
+  /** 每个 tab 的空格数 */
   tabSize: number;
 
-  /** Preserve original newlines */
+  /** 保留原始换行符 */
   preserveNewlines: boolean;
 
-  /** Include Chinese characters */
+  /** 包含中文字符 */
   includeChinese: boolean;
 
-  /** Include Japanese characters */
+  /** 包含日文字符 */
   includeJapanese: boolean;
 
-  /** Include Korean characters */
+  /** 包含韩文字符 */
   includeKorean: boolean;
 
-  /** Include CJK punctuation */
+  /** 包含 CJK 标点 */
   includeCjkPunctuation: boolean;
 
-  /** Show whitespace as dots */
+  /** 将空白显示为点 */
   showWhitespace: boolean;
 }
 
-// Default options
+// 默认选项
 export const DEFAULT_OPTIONS: RendererOptions = {
   lineWidth: 33,
   cjkCharWidth: 1.0,
@@ -95,31 +84,31 @@ export const DEFAULT_OPTIONS: RendererOptions = {
 };
 
 // ============================================================================
-// Rendered Line Interface
+// Rendered Line 接口
 // ============================================================================
 
 export interface RenderedLine {
-  /** Line number (1-based) */
+  /** 行号（从 1 开始） */
   number: number;
 
-  /** Original text content */
+  /** 原始文本内容 */
   content: string;
 
-  /** HTML escaped content for display */
+  /** 用于显示的 HTML 转义内容 */
   html: string;
 
-  /** Visual width in units */
+  /** 以单位为单位的视觉宽度 */
   width: number;
 
-  /** Is this an empty line */
+  /** 这是否是空行 */
   isEmpty: boolean;
 
-  /** Was this line hard-wrapped (not from original newline) */
+  /** 这是否是软换行（不是来自原始换行符） */
   isSoftWrapped: boolean;
 }
 
 // ============================================================================
-// Typography Renderer Class
+// Typography Renderer 类
 // ============================================================================
 
 export class TypographyRenderer {
@@ -130,24 +119,24 @@ export class TypographyRenderer {
   }
 
   // -----------------------------------------------------------------------
-  // Public API
+  // 公共 API
   // -----------------------------------------------------------------------
 
   /**
-   * Render content as fixed-width lines
+   * 将内容渲染为固定宽度行
    */
   render(content: string): RenderedLine[] {
-    // Escape HTML if needed
+    // 如果需要，转义 HTML
     if (this.options.escapeHtml) {
       content = this.escapeHtml(content);
     }
 
-    // Expand tabs if needed
+    // 如果需要，展开 tab
     if (this.options.expandTabs) {
       content = this.expandTabs(content);
     }
 
-    // Split into paragraphs (by original newlines)
+    // 按原始换行符分割成段落
     const paragraphs = content.split(/\n/);
 
     const lines: RenderedLine[] = [];
@@ -156,14 +145,14 @@ export class TypographyRenderer {
     for (let i = 0; i < paragraphs.length; i++) {
       const paragraph = paragraphs[i];
 
-      // Handle empty lines (preserve paragraph breaks)
+      // 处理空行（保留段落分隔）
       if (paragraph.length === 0) {
         lines.push(this.createLine(lineNumber + 1, '', true, false));
         lineNumber++;
         continue;
       }
 
-      // Wrap the paragraph into fixed-width lines
+      // 将段落包装成固定宽度行
       const wrappedLines = this.wrapParagraph(paragraph);
 
       for (const line of wrappedLines) {
@@ -179,7 +168,7 @@ export class TypographyRenderer {
   }
 
   /**
-   * Calculate the visual width of a string
+   * 计算字符串的视觉宽度
    */
   calculateWidth(text: string): number {
     let width = 0;
@@ -192,7 +181,7 @@ export class TypographyRenderer {
   }
 
   /**
-   * Get width of a single character
+   * 获取单个字符的宽度
    */
   getCharWidth(char: string): number {
     if (this.isIgnorable(char)) {
@@ -207,15 +196,15 @@ export class TypographyRenderer {
   }
 
   /**
-   * Check if character is CJK based on current settings
+   * 根据当前设置检查字符是否为 CJK
    */
   isCJK(char: string): boolean {
     const code = char.codePointAt(0);
     if (!code) return false;
 
-    // Check based on enabled detection options
+    // 根据启用的检测选项检查
     if (this.options.includeChinese) {
-      // Chinese: 4E00-9FFF, 3400-4DBF
+      // 中文：4E00-9FFF, 3400-4DBF
       if ((code >= 0x4E00 && code <= 0x9FFF) || (code >= 0x3400 && code <= 0x4DBF)) {
         return true;
       }
@@ -243,26 +232,26 @@ export class TypographyRenderer {
   }
 
   // -----------------------------------------------------------------------
-  // Private Methods
+  // 私有方法
   // -----------------------------------------------------------------------
 
   /**
-   * Wrap a paragraph into fixed-width lines
+   * 将段落包装成固定宽度行
    */
   private wrapParagraph(paragraph: string): Omit<RenderedLine, 'number'>[] {
     const lines: Omit<RenderedLine, 'number'>[] = [];
     let currentLine = '';
     let currentWidth = 0;
 
-    // Split into characters
+    // 分割成字符
     const chars = [...paragraph];
 
     for (const char of chars) {
       const charWidth = this.getCharWidth(char);
 
-      // Check if adding this char exceeds line width
+      // 检查添加此字符是否超过行宽
       if (currentWidth + charWidth > this.options.lineWidth) {
-        // Push current line and start a new one
+        // 推送当前行并开始新行
         if (currentLine.length > 0) {
           lines.push(this.createLine(-1, currentLine, false, true));
         }
@@ -275,7 +264,7 @@ export class TypographyRenderer {
       }
     }
 
-    // Push remaining content
+    // 推送剩余内容
     if (currentLine.length > 0) {
       lines.push(this.createLine(-1, currentLine, false, false));
     }
@@ -284,7 +273,7 @@ export class TypographyRenderer {
   }
 
   /**
-   * Create a line object (number is ignored, caller assigns it)
+   * 创建行对象（number 被忽略，调用者赋值）
    */
   private createLine(
     _lineNumber: number,
@@ -304,7 +293,7 @@ export class TypographyRenderer {
   }
 
   /**
-   * Escape HTML entities
+   * 转义 HTML 实体
    */
   private escapeHtml(text: string): string {
     return text
@@ -316,7 +305,7 @@ export class TypographyRenderer {
   }
 
   /**
-   * Expand tabs to spaces
+   * 将 tab 展开为空格
    */
   private expandTabs(text: string): string {
     if (!this.options.expandTabs) {
@@ -342,17 +331,17 @@ export class TypographyRenderer {
   }
 
   /**
-   * Check if character should be ignored in width calculation
+   * 检查字符在宽度计算中是否应忽略
    */
   private isIgnorable(char: string): boolean {
-    // Zero-width characters
+    // 零宽字符
     const code = char.codePointAt(0);
     if (!code) return false;
 
-    // Zero width no-break space
+    // 零宽不间断空格
     if (code === 0xfeff) return true;
 
-    // Control characters (except tab, which is handled separately)
+    // 控制字符（tab 除外，单独处理）
     if ((code >= 0x00 && code <= 0x08) || (code >= 0x0a && code <= 0x1f)) {
       return true;
     }
@@ -362,11 +351,11 @@ export class TypographyRenderer {
 }
 
 // ============================================================================
-// Helper Functions
+// 辅助函数
 // ============================================================================
 
 /**
- * Create a renderer from a FixedPreset configuration
+ * 从 FixedPreset 配置创建渲染器
  */
 export function createRendererFromPreset(preset: FixedPreset): TypographyRenderer {
   return new TypographyRenderer({
@@ -387,7 +376,7 @@ export function createRendererFromPreset(preset: FixedPreset): TypographyRendere
 }
 
 /**
- * Get active preset from config (pro mode uses original preset for compatibility)
+ * 从配置中获取活动预设（pro 模式使用 original 预设以保持兼容性）
  */
 export function getActivePreset(config: TypographyConfig): OriginalPreset | FixedPreset {
   const presetName = config.preset === 'pro' ? 'original' : config.preset;
@@ -395,7 +384,7 @@ export function getActivePreset(config: TypographyConfig): OriginalPreset | Fixe
 }
 
 /**
- * Check if a preset is 'fixed' mode
+ * 检查预设是否为 'fixed' 模式
  */
 export function isFixedPreset(preset: OriginalPreset | FixedPreset): preset is FixedPreset {
   return 'line_width' in preset;

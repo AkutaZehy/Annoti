@@ -24,7 +24,7 @@ export function useSettings() {
       // 获取当前用户
       await loadCurrentUser();
     } catch (e) {
-      console.error('Settings init failed:', e);
+      console.error('设置初始化失败:', e);
     }
   };
 

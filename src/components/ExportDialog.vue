@@ -41,7 +41,7 @@ const exportFile = async () => {
       if (savePath) {
         const text = await blob.text();
         await invoke('write_file_content', { path: savePath, content: text });
-        console.log('Annotation exported:', savePath);
+        console.log('注解已导出:', savePath);
       }
     } else {
       // 导出为 HTML
@@ -54,12 +54,12 @@ const exportFile = async () => {
 
       if (savePath) {
         await exportAsHtml(savePath);
-        console.log('HTML exported:', savePath);
+        console.log('HTML 已导出:', savePath);
       }
     }
     close();
   } catch (e) {
-    console.error('Export failed:', e);
+    console.error('导出失败:', e);
     alert('导出失败: ' + e);
   } finally {
     exporting.value = false;

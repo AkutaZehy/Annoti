@@ -87,7 +87,7 @@ export function useAnnotations() {
 
       annotations.value = records.map(recordToAnnotation);
     } catch (e) {
-      console.error('Load annotations failed:', e);
+      console.error('加载注解失败:', e);
       annotations.value = [];
     }
   };
@@ -105,7 +105,7 @@ export function useAnnotations() {
     highlightType: 'underline' | 'square' = 'underline'
   ): Promise<Annotation> => {
     if (!currentDocId) {
-      throw new Error('No document set');
+      throw new Error('未设置文档');
     }
 
     const newAnno: Annotation = {
@@ -135,7 +135,7 @@ export function useAnnotations() {
    */
   const exportAnnotation = async (annoId: string): Promise<Blob> => {
     if (!currentDocPath) {
-      throw new Error('No document set');
+      throw new Error('未设置文档');
     }
 
     const json = await invoke<string>('export_annotation', {
@@ -151,7 +151,7 @@ export function useAnnotations() {
    */
   const importAnnotation = async (file: File): Promise<{ imported: number; duplicates: number; warning?: string }> => {
     if (!currentDocPath) {
-      throw new Error('No document set');
+      throw new Error('未设置文档');
     }
 
     const text = await file.text();
@@ -264,7 +264,7 @@ export function useAnnotations() {
    */
   const exportAsHtml = async (savePath: string): Promise<void> => {
     if (!currentDocId) {
-      throw new Error('No document set');
+      throw new Error('未设置文档');
     }
 
     const renderedContent = await marked(docContent.value || '');
@@ -341,10 +341,10 @@ export function useAnnotations() {
           range.surroundContents(span);
         } catch (e) {
           // 如果范围跨越多个节点，尝试部分高亮
-          console.warn('Highlight span failed, trying alternative approach', e);
+          console.warn('高亮 span 失败，尝试替代方法', e);
         }
       } catch (e) {
-        console.warn('Failed to apply highlight for annotation:', anno.id, e);
+        console.warn('应用高亮失败，注解:', anno.id, e);
       }
     }
   };

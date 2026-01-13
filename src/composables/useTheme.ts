@@ -2,13 +2,10 @@
    useTheme Composable
    ============================================================================
 
-   Theme state management for light/dark mode switching:
-   - Loads/saves theme preference via Rust backend
-   - Applies theme CSS classes to document
-   - Provides computed getters for theme values
-
-   Usage:
-     const { theme, isDark, toggleTheme, setTheme } = useTheme();
+   主题状态管理（深色/浅色模式切换）：
+   - 通过 Rust 后端加载/保存主题偏好
+   - 应用主题 CSS 类到文档
+   - 为主题值提供计算属性
 */
 
 import { ref, computed, onMounted } from 'vue';
@@ -16,31 +13,25 @@ import { invoke } from '@tauri-apps/api/core';
 import type { ThemeMode } from '@/types/theme';
 import { getThemeColors } from '@/types/theme';
 
-// ============================================================================
-// State
-// ============================================================================
+// 状态
 
 const theme = ref<ThemeMode>('light');
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-// ============================================================================
-// Computed Properties
-// ============================================================================
+// 计算属性
 
 export function useTheme() {
-  /** Check if dark mode is active */
+  /** 检查是否处于深色模式 */
   const isDark = computed(() => theme.value === 'dark');
 
-  /** Get current theme colors */
+  /** 获取当前主题颜色 */
   const colors = computed(() => getThemeColors(theme.value));
 
-  // =========================================================================
-  // Actions
-  // =========================================================================
+  // 操作
 
   /**
-   * Load theme from settings
+   * 从设置加载主题
    */
   async function loadTheme(): Promise<void> {
     isLoading.value = true;
@@ -52,15 +43,15 @@ export function useTheme() {
         const settings = JSON.parse(settingsJson);
         theme.value = settings.theme || 'light';
       } else {
-        // No settings yet, default to light
+        // 还没有设置，默认使用浅色主题
         theme.value = 'light';
       }
 
       applyTheme();
     } catch (err) {
-      error.value = `Failed to load theme: ${err}`;
+      error.value = `加载主题失败: ${err}`;
       console.error(error.value);
-      // Default to light on error
+      // 出错时默认为浅色主题
       theme.value = 'light';
       applyTheme();
     } finally {
@@ -69,11 +60,11 @@ export function useTheme() {
   }
 
   /**
-   * Save theme to settings
+   * 保存主题到设置
    */
   async function saveTheme(): Promise<void> {
     try {
-      // Get existing settings first
+      // 先获取现有设置
       let settings = { theme: theme.value };
       const existingJson = await invoke<string | null>('load_ui_settings');
       if (existingJson) {
@@ -83,13 +74,13 @@ export function useTheme() {
 
       await invoke('save_ui_settings', { settingsJson: JSON.stringify(settings) });
     } catch (err) {
-      error.value = `Failed to save theme: ${err}`;
+      error.value = `保存主题失败: ${err}`;
       console.error(error.value);
     }
   }
 
   /**
-   * Toggle between light and dark mode
+   * 在浅色和深色模式之间切换
    */
   async function toggleTheme(): Promise<void> {
     theme.value = theme.value === 'light' ? 'dark' : 'light';
@@ -98,7 +89,7 @@ export function useTheme() {
   }
 
   /**
-   * Set specific theme mode
+   * 设置特定的主题模式
    */
   async function setTheme(mode: ThemeMode): Promise<void> {
     if (theme.value !== mode) {
@@ -109,41 +100,37 @@ export function useTheme() {
   }
 
   /**
-   * Apply theme CSS class to document
+   * 将主题 CSS 类应用到文档
    */
   function applyTheme(): void {
     if (typeof document === 'undefined') return;
 
-    // Remove both theme classes
+    // 移除两个主题类
     document.documentElement.classList.remove('light-theme', 'dark-theme');
 
-    // Add current theme class
+    // 添加当前主题类
     document.documentElement.classList.add(`${theme.value}-theme`);
   }
 
-  // =========================================================================
-  // Lifecycle
-  // =========================================================================
+  // 生命周期
 
   onMounted(() => {
     loadTheme();
   });
 
-  // =========================================================================
-  // Return
-  // =========================================================================
+  // 返回值
 
   return {
-    // State
+    // 状态
     theme,
     isLoading,
     error,
 
-    // Computed
+    // 计算属性
     isDark,
     colors,
 
-    // Actions
+    // 操作
     loadTheme,
     saveTheme,
     toggleTheme,

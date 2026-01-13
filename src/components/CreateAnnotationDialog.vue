@@ -3,13 +3,13 @@
    CreateAnnotationDialog.vue
  ============================================================================
 
-   Card-style dialog for creating annotations:
-   - Shows selected text preview
-   - Allows adding note content
-   - Fixed highlight style: yellow with underline
-   - Smooth animations
+   创建批注的卡片式对话框：
+   - 显示已选文本预览
+   - 允许添加笔记内容
+   - 固定高亮样式：黄色带下划线
+   - 平滑动画
 
-   Usage:
+   用法:
      <CreateAnnotationDialog
        :visible="visible"
        :selected-text="selectedText"
@@ -30,13 +30,13 @@ const emit = defineEmits<{
   (e: 'cancel'): void;
 }>();
 
-// Local state
+// 本地状态
 const localNote = ref('');
 
-// Fixed highlight color
+// 固定高亮颜色
 const highlightColor = '#ffd700';
 
-// Reset local state when dialog opens
+// 对话框打开时重置本地状态
 watch(() => props.visible, (visible) => {
   if (visible) {
     localNote.value = '';
@@ -54,7 +54,7 @@ const handleCancel = () => {
   emit('cancel');
 };
 
-// Truncate long selected text for preview
+// 截断长文本用于预览
 const truncatedText = computed(() => {
   const text = props.selectedText;
   if (text.length > 100) {
@@ -69,21 +69,21 @@ const truncatedText = computed(() => {
     <Transition name="card-fade">
       <div v-if="visible" class="dialog-overlay" @click.self="handleCancel">
         <div class="annotation-card">
-          <!-- Card Header -->
+          <!-- 卡片头部 -->
           <div class="card-header">
             <div class="card-icon">📝</div>
             <div class="card-title">添加批注</div>
             <button class="close-btn" @click="handleCancel">×</button>
           </div>
 
-          <!-- Selected Text Preview -->
+          <!-- 已选文本预览 -->
           <div class="card-body">
             <div class="section-label">已选文本</div>
             <div class="selected-text-preview">
               "{{ truncatedText }}"
             </div>
 
-            <!-- Note Input -->
+            <!-- 笔记输入 -->
             <div class="section-label">笔记内容（可选）</div>
             <textarea
               v-model="localNote"
@@ -93,7 +93,7 @@ const truncatedText = computed(() => {
             ></textarea>
           </div>
 
-          <!-- Card Footer -->
+          <!-- 卡片底部 -->
           <div class="card-footer">
             <button class="btn-cancel" @click="handleCancel">取消</button>
             <button class="btn-confirm" @click="handleConfirm">
@@ -272,7 +272,7 @@ const truncatedText = computed(() => {
   box-shadow: 0 4px 12px rgba(100, 108, 255, 0.3);
 }
 
-/* Animations */
+/* 动画 */
 .card-fade-enter-active,
 .card-fade-leave-active {
   transition: all 0.2s ease;

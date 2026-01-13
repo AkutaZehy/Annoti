@@ -2,17 +2,17 @@
    Typography Base Styles
    ============================================================================
 
-   This file provides CSS custom properties (variables) for typography
-   that can be dynamically updated by the typography configuration system.
+   本文件提供 CSS 自定义属性（变量）用于排版
+   可通过排版配置系统动态更新
 
-   Usage:
-   - Import this in main.ts after global styles
-   - Use the CSS custom properties defined here in your components
-   - The useTypography composable updates these variables reactively
+   用法：
+   - 在 main.ts 中全局样式之后导入此文件
+   - 在组件中使用此处定义的 CSS 自定义属性
+   - useTypography composable 会响应式地更新这些变量
 */
 
 /* ==========================================================================
-   Typography Variables (populated by useTypography composable)
+   排版变量（由 useTypography composable 填充）
    ========================================================================== */
 
 :root {
@@ -61,7 +61,7 @@
   --table-row-odd-background: var(--bg-tertiary, #242424);
 
   /* ==========================================================================
-     Fixed Mode Variables (used when preset = 'fixed')
+     固定模式变量（当 preset = 'fixed' 时使用）
      ========================================================================== */
 
   /* Core fixed-width */
@@ -96,10 +96,10 @@
 }
 
 /* ==========================================================================
-   Render Mode Classes
+   渲染模式类
    ========================================================================== */
 
-/* Original preset (markdown HTML) */
+/* Original 预设（markdown HTML） */
 .typography-original .document-content {
   font-family: var(--font-family);
   font-size: var(--font-size);
@@ -198,7 +198,7 @@
   background: var(--table-row-odd-background);
 }
 
-/* Fixed preset (plain text, fixed width) */
+/* Fixed 预设（纯文本，固定宽度） */
 .typography-fixed .document-content {
   font-family: var(--fixed-font-family);
   font-size: var(--fixed-font-size);
@@ -207,7 +207,7 @@
   text-align: var(--fixed-text-align);
 }
 
-/* Line number styling */
+/* 行号样式 */
 .typography-fixed .document-content.with-line-numbers {
   --fixed-show-line-numbers: 1;
 }
@@ -237,15 +237,15 @@
 }
 
 /* ==========================================================================
-   CSS Override Mode
+   CSS 覆盖模式
    ========================================================================== */
 
 .typography-css-override .document-content {
-  /* When CSS override is enabled, all preset styles are ignored */
-  /* and user-provided custom_css is injected instead */
+  /* 当 CSS 覆盖启用时，忽略所有预设样式 */
+  /* 而是注入用户提供的 custom_css */
 }
 
-/* Highlight colors for annotations (shared between presets) */
+/* 注解高亮颜色（预设之间共享） */
 .highlight-underline {
   text-decoration: none;
   border-bottom: 2px solid var(--highlight-color, #ffeb3b);

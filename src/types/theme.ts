@@ -1,26 +1,26 @@
-// Theme Configuration Types
-// Supports light/dark theme switching
+// 主题配置类型
+// 支持浅色/深色主题切换
 
 export type ThemeMode = 'light' | 'dark';
 
 export interface ThemeColors {
-  // Background colors
+  // 背景颜色
   background_primary: string;
   background_secondary: string;
   background_tertiary: string;
 
-  // Text colors
+  // 文本颜色
   text_primary: string;
   text_secondary: string;
   text_tertiary: string;
 
-  // Accent colors
+  // 强调色
   accent: string;
   accent_hover: string;
   border: string;
   border_light: string;
 
-  // Specific component colors
+  // 特定组件颜色
   code_background: string;
   blockquote_border: string;
   blockquote_color: string;

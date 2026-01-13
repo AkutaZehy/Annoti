@@ -15,7 +15,7 @@ const settingsDialogRef = ref<InstanceType<typeof SettingsDialog> | null>(null);
 const importExportDialogRef = ref<InstanceType<typeof ImportExportDialog> | null>(null);
 const viewerRef = ref<InstanceType<typeof DocumentViewer> | null>(null);
 
-// Sidebar resize state
+// 侧边栏调整大小状态
 const isResizing = ref(false);
 const startX = ref(0);
 const startWidth = ref(0);
@@ -120,7 +120,7 @@ const onRefresh = async () => {
 };
 
 // ============================================================================
-// Sidebar Resize Handlers
+// 侧边栏调整大小处理器
 // ============================================================================
 
 const startResize = (e: MouseEvent) => {
@@ -144,11 +144,11 @@ const handleResize = (e: MouseEvent) => {
   const deltaX = e.clientX - startX.value;
   const containerWidth = containerRect.width;
 
-  // Calculate new width as percentage
+  // 计算新宽度百分比
   const deltaPercent = (deltaX / containerWidth) * 100;
   const newWidth = startWidth.value - deltaPercent;
 
-  // Clamp to valid range
+  // 约束到有效范围
   const constrainedWidth = Math.max(minWidth.value, Math.min(newWidth, maxWidth.value));
 
   sidebarWidth.value = constrainedWidth;
@@ -161,12 +161,12 @@ const stopResize = async () => {
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
 
-  // Save the new width
+  // 保存新宽度
   await setSidebarWidth(sidebarWidth.value);
 };
 
 // ============================================================================
-// Computed Styles
+// 计算样式
 // ============================================================================
 
 const sidebarStyle = computed(() => ({
@@ -201,7 +201,7 @@ const mainStyle = computed(() => ({
                 <StickyNoteOverlay class="note-overlay-in-viewer" />
             </section>
 
-            <!-- Resize Handle -->
+            <!-- 调整大小手柄 -->
             <div
                 v-if="sidebarVisible"
                 class="resize-handle"
@@ -209,7 +209,7 @@ const mainStyle = computed(() => ({
                 :title="`拖拽调整宽度 (${minWidth}% - ${maxWidth}%)`"
             ></div>
 
-            <!-- Sidebar -->
+            <!-- 侧边栏 -->
             <aside v-if="sidebarVisible" class="pane sidebar-pane" :style="sidebarStyle">
                 <div class="sidebar-header">
                     <span>批注列表</span>
@@ -220,7 +220,7 @@ const mainStyle = computed(() => ({
                 <AnnotationList @locate="onLocateRequest" @delete="onDeleteAnnotation" />
             </aside>
 
-            <!-- Show sidebar button when hidden -->
+            <!-- 隐藏时显示侧边栏按钮 -->
             <div v-if="!sidebarVisible" class="sidebar-collapsed">
                 <button class="sidebar-toggle" @click="toggleSidebar" title="显示侧边栏">
                     «

@@ -63,7 +63,7 @@ export function useDocument() {
     highlightType?: 'underline' | 'square'
   ) => {
     if (!currentUser.value) {
-      console.warn('User not loaded');
+      console.warn('用户未加载');
       return;
     }
 

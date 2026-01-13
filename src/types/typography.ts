@@ -1,29 +1,29 @@
-// Typography Configuration Types
-// Supports multiple presets with YAML-style configuration
+// 排版配置类型
+// 支持多预设和 YAML 风格配置
 
 // ============================================================================
-// Top-Level Configuration
+// 顶层配置
 // ============================================================================
 
 export interface TypographyConfig {
-  /** Current active preset name */
+  /** 当前活动预设名称 */
   preset: PresetName;
 
-  /** When true, bypass preset params and use custom_css only */
+  /** 为 true 时，绕过预设参数，只使用 custom_css */
   use_css_override: boolean;
 
-  /** Raw CSS string, used when use_css_override is true */
+  /** 原始 CSS 字符串，当 use_css_override 为 true 时使用 */
   custom_css: string;
 
-  /** All available presets */
+  /** 所有可用的预设 */
   presets: Presets;
 }
 
-// Preset names (pro is a virtual mode using custom_css)
+// 预设名称（pro 是使用 custom_css 的虚拟模式）
 export type PresetName = 'original' | 'fixed' | 'pro';
 
 // ============================================================================
-// Presets Container
+// 预设容器
 // ============================================================================
 
 export interface Presets {
@@ -32,24 +32,24 @@ export interface Presets {
 }
 
 // ============================================================================
-// Original Preset (Markdown HTML Rendering)
+// Original 预设（Markdown HTML 渲染）
 // ============================================================================
 
 export interface OriginalPreset {
-  /** Font settings */
+  /** 字体设置 */
   font_family: string;
   font_size: number;        // px
   font_weight: number | string;
 
-  /** Line settings */
-  line_height: number;      // unitless
+  /** 行设置 */
+  line_height: number;      // 无单位
   text_align: 'left' | 'center' | 'right' | 'justify';
 
-  /** Spacing */
-  paragraph_spacing: string; // e.g., "1.5em"
-  heading_margin: string;    // e.g., "1.2em 0 0.6em"
+  /** 间距 */
+  paragraph_spacing: string; // 例如 "1.5em"
+  heading_margin: string;    // 例如 "1.2em 0 0.6em"
 
-  /** Headings */
+  /** 标题 */
   headings: {
     h1_size: string;
     h2_size: string;
@@ -59,20 +59,20 @@ export interface OriginalPreset {
     border_color: string;
   };
 
-  /** Lists */
+  /** 列表 */
   lists: {
     padding_left: string;
     bullet_style: 'disc' | 'circle' | 'square' | 'decimal';
   };
 
-  /** Code blocks */
+  /** 代码块 */
   code: {
     font_family: string;
     background: string;
     border_radius: string;
   };
 
-  /** Blockquotes */
+  /** 引用块 */
   blockquote: {
     border_left: string;
     padding_left: string;
@@ -80,14 +80,14 @@ export interface OriginalPreset {
     background?: string;
   };
 
-  /** Links */
+  /** 链接 */
   links: {
     color: string;
     underline: boolean;
     hover_color?: string;
   };
 
-  /** Tables */
+  /** 表格 */
   tables: {
     border_collapse: boolean;
     border_spacing: string;
@@ -98,45 +98,45 @@ export interface OriginalPreset {
 }
 
 // ============================================================================
-// Fixed Preset (Plain Text, Fixed Width)
+// Fixed 预设（纯文本，固定宽度）
 // ============================================================================
 
 export interface FixedPreset {
-  /** Core fixed-width params */
-  line_width: number;               // Character units per line (default: 33)
-  cjk_char_width: number;           // CJK = 1 unit
-  non_cjk_char_width: number;       // Non-CJK = 0.5 unit
+  /** 核心固定宽度参数 */
+  line_width: number;               // 每行字符单位数（默认值：33）
+  cjk_char_width: number;           // CJK = 1 单位
+  non_cjk_char_width: number;       // 非 CJK = 0.5 单位
 
-  /** Text alignment */
+  /** 文本对齐 */
   text_align: 'left' | 'center' | 'right';
 
-  /** Font */
+  /** 字体 */
   font_family: string;
   font_size: number;        // px
   font_weight: number | string;
 
-  /** Line */
-  line_height: number;      // unitless
+  /** 行 */
+  line_height: number;      // 无单位
 
-  /** Markdown syntax preservation */
-  preserve_markdown: boolean;   // Show # heading vs <h1>
-  escape_html: boolean;         // Escape < > & characters
+  /** Markdown 语法保留 */
+  preserve_markdown: boolean;   // 显示 # 标题 vs <h1>
+  escape_html: boolean;         // 转义 < > & 字符
 
-  /** Line numbering */
+  /** 行号 */
   show_line_numbers: boolean;
-  line_number_width: string;    // e.g., "3ch"
+  line_number_width: string;    // 例如 "3ch"
   line_number_color: string;
   line_number_font?: string;
 
-  /** Tab handling */
-  tab_size: number;              // Spaces per tab
+  /** Tab 处理 */
+  tab_size: number;              // 每个 tab 的空格数
   expand_tabs: boolean;
 
-  /** Newline handling */
+  /** 换行处理 */
   preserve_original_newlines: boolean;
-  empty_line_height: string;     // e.g., "0.5em"
+  empty_line_height: string;     // 例如 "0.5em"
 
-  /** Language-specific CJK detection */
+  /** 特定语言的 CJK 检测 */
   cjk_detection: {
     include_chinese: boolean;
     include_japanese: boolean;
@@ -144,16 +144,16 @@ export interface FixedPreset {
     include_cjk_punctuation: boolean;
   };
 
-  /** Hard wrapping */
-  max_line_length?: number;      // Optional hard limit
+  /** 硬换行 */
+  max_line_length?: number;      // 可选的硬限制
 
-  /** Visual aids */
-  show_whitespace: boolean;      // Show spaces as dots
-  show_line_markers?: boolean;   // Show ¶ for paragraphs
+  /** 视觉辅助 */
+  show_whitespace: boolean;      // 显示空格为点
+  show_line_markers?: boolean;   // 显示 ¶ 表示段落
 }
 
 // ============================================================================
-// Default Presets
+// 默认预设
 // ============================================================================
 
 export const DEFAULT_ORIGINAL_PRESET: OriginalPreset = {
@@ -245,7 +245,7 @@ export const DEFAULT_FIXED_PRESET: FixedPreset = {
 };
 
 // ============================================================================
-// YAML Serialization Helpers
+// YAML 序列化辅助函数
 // ============================================================================
 
 export function createDefaultTypographyConfig(): TypographyConfig {
@@ -357,7 +357,7 @@ export function mergeTypographyConfig(
 }
 
 // ============================================================================
-// CJK Detection Utilities
+// CJK 检测工具
 // ============================================================================
 
 export function isCJK(char: string): boolean {

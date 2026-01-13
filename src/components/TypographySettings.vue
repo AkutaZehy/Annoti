@@ -11,7 +11,7 @@
    - 未保存更改追踪
    - 模式切换警告
 
-   Usage:
+   用法:
      <TypographySettings @close="closeDialog" />
 
    子组件:
@@ -27,7 +27,7 @@ import { computed } from 'vue';
 import { useTheme } from '@/composables/useTheme';
 import { useTypographySettings } from '@/composables/useTypographySettings';
 
-// Import sub-components
+// 导入子组件
 import ModeSelector from './typography/ModeSelector.vue';
 import OriginalPresetSettings from './typography/OriginalPresetSettings.vue';
 import FixedPresetSettings from './typography/FixedPresetSettings.vue';
@@ -41,7 +41,7 @@ const emit = defineEmits<{
 
 const { isDark } = useTheme();
 
-// Use typography settings composable
+// 使用排版设置 composable
 const {
   activeMode,
   pendingOriginal,
@@ -63,10 +63,10 @@ const {
   checkHasPendingChanges,
 } = useTypographySettings();
 
-// Theme class for preview
+// 用于预览的主题类
 const previewThemeClass = computed(() => (isDark.value ? '' : 'light-theme'));
 
-// CSS change flag for sub-component
+// 用于子组件的 CSS 更改标志
 const cssHasChange = computed(() => hasCssChange.value);
 
 // Mode warning dialog title and message (所有模式切换都显示警告)

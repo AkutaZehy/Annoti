@@ -3,27 +3,27 @@
    TextViewer.vue
    ============================================================================
 
-   Fixed-width plain text viewer component:
-   - Renders content as plain text with fixed line width
-   - CJK characters = 1 unit, Non-CJK = 0.5 unit
-   - Optional line numbers
-   - Tab expansion
-   - Used when typography preset = 'fixed'
+   固定宽度纯文本查看器组件：
+   - 将内容渲染为固定行宽的纯文本
+   - CJK 字符 = 1 单位，非 CJK = 0.5 单位
+   - 可选行号
+   - Tab 展开
+   - 当排版预设 = 'fixed' 时使用
 
-   Usage:
+   用法:
      <TextViewer :content="content" :lines="renderedLines" />
 */
 
 import type { RenderedLine } from '@/utils/typographyRenderer';
 
 defineProps<{
-  /** The rendered lines from TypographyRenderer */
+  /** 来自 TypographyRenderer 的已渲染行 */
   lines: RenderedLine[];
 
-  /** Whether to show line numbers */
+  /** 是否显示行号 */
   showLineNumbers?: boolean;
 
-  /** Custom class name for additional styling */
+  /** 用于额外样式的自定义类名 */
   className?: string;
 }>();
 </script>
@@ -85,7 +85,7 @@ defineProps<{
   word-break: break-all;
 }
 
-/* Whitespace visibility */
+/* 空白可见性 */
 .line-content.whitespace-visible .space {
   display: inline-block;
   width: 0.5em;
@@ -95,7 +95,7 @@ defineProps<{
   margin: 0 0.1em;
 }
 
-/* Scrollbar styling */
+/* 滚动条样式 */
 .text-viewer {
   overflow-y: auto;
   overflow-x: auto;

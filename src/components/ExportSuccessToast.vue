@@ -3,12 +3,12 @@
    ExportSuccessToast.vue
    ============================================================================
 
-   Toast notification for export success:
-   - Auto-closes after 5 seconds
-   - Shows success/error state
-   - Smooth slide-in animation
+   导出成功提示通知：
+   - 5秒后自动关闭
+   - 显示成功/错误状态
+   - 平滑滑入动画
 
-   Usage:
+   用法:
      <ExportSuccessToast
        :visible="visible"
        :success="true"
@@ -48,7 +48,7 @@ watch(() => props.visible, (visible) => {
 const startProgress = () => {
   progress.value = 100;
   progressInterval = setInterval(() => {
-    progress.value -= 5; // 100% / 20 * 100ms = 2 seconds
+    progress.value -= 5; // 100% / 20 * 100ms = 2秒
     if (progress.value <= 0) {
       handleClose();
     }
@@ -187,7 +187,7 @@ onUnmounted(() => {
   display: none;
 }
 
-/* Animations */
+/* 动画 */
 .toast-slide-enter-active {
   transition: all 0.3s ease-out;
 }

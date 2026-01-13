@@ -40,7 +40,7 @@ pub struct AnnotationRecord {
     pub note_height: f64,
     pub highlight_color: String,
     pub highlight_type: String,
-    pub anchor_data: String, // JSON string
+    pub anchor_data: String, // JSON 字符串
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -649,7 +649,7 @@ fn generate_readonly_html(_doc_name: &str, content: &str, annotations: &[Annotat
 
     let payload = serde_json::to_string(&annotations).unwrap_or_default();
 
-    // Note: Use format! with HTML and manually concatenate to avoid issues with {} in script
+    // 注意：使用 format! 和 HTML 手动拼接，避免 script 中 {} 出现问题
     let html = format!(r#"<!DOCTYPE html>
 <html>
 <head>
@@ -742,7 +742,7 @@ fn generate_readonly_html(_doc_name: &str, content: &str, annotations: &[Annotat
     <script>
         const annotations = JSON.parse(document.getElementById('ann-payload').textContent);
 
-        // Click highlight to scroll to note
+        // 点击高亮滚动到便签
         document.querySelectorAll('.doc-highlight').forEach(function(el) {{
             el.addEventListener('click', function() {{
                 const id = el.dataset.annoId;
@@ -775,7 +775,7 @@ fn generate_readonly_html(_doc_name: &str, content: &str, annotations: &[Annotat
             }});
         }}
 
-        // Drag functionality
+        // 拖拽功能
         document.querySelectorAll('.sticky-note').forEach(function(note) {{
             let isDragging = false;
             let startX, startY, origX, origY;
