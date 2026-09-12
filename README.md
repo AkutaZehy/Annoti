@@ -43,7 +43,7 @@ cd frontend && pnpm test       # 前端：锚点引擎 / 图片路径解析
 
 # 发布构建
 wails build                    # 注意：需先生成资源文件（见 doc/v1-architecture.md §5）
-go build -trimpath -ldflags "-s -w -H windowsgui" -o build/bin/annoti.exe .   # 直接构建（含版本信息）
+go build -tags desktop,production -trimpath -ldflags "-s -w -H windowsgui" -o build/bin/annoti.exe .   # 直接构建（必须带 wails 构建标签，含版本信息）
 ```
 
 纯浏览器开发（不起 Wails）：`cd frontend && pnpm dev`，自动使用内置示例文档与

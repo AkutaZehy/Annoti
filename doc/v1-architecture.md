@@ -173,13 +173,22 @@ pnpm test        # vitest：锚点引擎 10 例
 pnpm build       # vue-tsc --noEmit && vite build
 
 # 后端（根目录）
-go test ./...    # storage 3 例 + pack 3 例
+go test ./...    # storage 3 例 + pack 3 例 + localres 2 例
 go vet ./...
 
 # 集成
-wails build      # → build/bin/annoti.exe（约 14MB）
+wails build      # → build/bin/annoti.exe
 wails dev        # 开发模式（前端热更新）
+
+# 直接 go build 发布（绕过 wails 打包步骤，与外部 winres syso 配合）
+# 注意：desktop,production 标签缺一不可，否则启动即报"Wails applications
+# will not build without the correct build tags"
+go build -tags desktop,production -trimpath -ldflags "-s -w -H windowsgui" \
+  -o build/bin/annoti.exe .
 ```
+
+版本资源：`winres/winres.json` 经 `go-winres simply --arch amd64` 生成
+`rsrc_windows_amd64.syso`（产品名 / 版本 / 版权 / 图标 / 清单，go build 自动链接）。
 
 纯浏览器开发（不起 Wails）：`cd frontend && pnpm dev`，自动落到 mock 平台，
 内置示例文档，批注存 localStorage。
