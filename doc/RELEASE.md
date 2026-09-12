@@ -79,8 +79,10 @@ scripts/release.sh --notes build/dist/notes.md
   **不含 winres.json 的版本信息**（exe 属性版本为空）；必须用 `make`。且 `make` 只认 PNG/JPG
   （≤256x256），winres.json 引用 .ico 会报 `image: unknown format`——图标源定为 winres/icon.png。
   `build/windows/icon.ico` 是 wails build 自用产物，与发布 syso 无关。
-- **换了图标但"看起来没换"**（2026-09-13，v2.0.0-alpha）：发布构建把新 exe 覆盖到与上一版相同的
-  路径，Windows 图标缓存仍显示旧图（同路径同名覆盖的经典坑）。验证真身须绕过缓存：
-  `SHDefExtractIcon` 直读资源，或把 exe 改名/复制一份再看；给用户侧的修法是 `ie4uinit.exe -show`
-  或删除 `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db` 后重启 explorer，
-  任务栏/开始菜单钉住的旧快捷方式需重新钉。
+- **图标"生成了但没换/显示成一小块"**（2026-09-13，v2.0.0-alpha 发布当日发现）：栅格化管线的
+  包装页 img 宽高被写死复用，导致 winres/icon.png 实际是"256 画布上 64px 图标"，编进 ICO 后
+  小尺寸下几乎空白，看起来正像"图标没换"。排查中又引入第二错：去掉 svg 的 width/height 想
+  让它自适应窗口，结果 Chrome 按 viewBox 固有尺寸（1024）渲染、窗口只截到左上局部。
+  **定案管线：包装 img 尺寸逐次生成、必须与 --window-size 一致**；验证除提取图标外必须检查
+  满幅（四角透明、边中点不透明）。另：覆盖构建同路径 exe 后资源管理器有图标缓存，
+  验证真身可用 SHDefExtractIcon 直读资源或把 exe 改名再看。
