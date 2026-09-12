@@ -2,13 +2,19 @@
 // 便签：贴在文档上方的批注卡片，真正的便签语义——
 // 可同时摊开多张、点空白处不会消失，只有点 ×（或删除批注）才收走。
 // 头部可拖拽（Pointer Events + setPointerCapture），拖拽位置会话内有效。
+// V2：回复输入框 + 直接子回复列表（点回复可摊开它的便签），
+//     批注正文与回复支持 Markdown 与本地图片；作者色按人稳定。
 
 import { computed, ref } from "vue";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
 import type { Annotation } from "@/types";
-import Icon from "./ui/Icon.vue";
+import type { ReplyNode } from "@/core/threads";
+import { authorColorOf } from "@/core/authors";
 import { HIGHLIGHT_COLORS } from "@/core/highlight";
+import { renderNoteBody } from "@/formats/markdown";
+import type { RenderContext } from "@/formats";
+import { inWailsShell } from "@/platform";
+import { useDocument } from "@/composables/useDocument";
+import Icon from "./ui/Icon.vue";
 
 const props = defineProps<{
   annotation: Annotation;
@@ -16,6 +22,11 @@ const props = defineProps<{
   rect: DOMRect;
   /** 打开时是否直接进入编辑 */
   editing: boolean;
+  /** 本条批注的直接子回复（已按时间排序、深度封顶） */
+  replies?: ReplyNode[];
+  /** 回复的便签显示的父批注上下文 */
+  parentAuthor?: string;
+  parentQuote?: string;
   zIndex: number;
 }>();
 
@@ -24,14 +35,30 @@ const emit = defineEmits<{
   (e: "delete"): void;
   (e: "close"): void;
   (e: "resolve", value: boolean): void;
+  /** 发出回复（parentId 由父组件闭合持有） */
+  (e: "reply", body: string): void;
+  /** 删除某条子回复 */
+  (e: "deleteReply", id: string): void;
+  /** 点某条子回复 → 摊开它的便签 */
+  (e: "openReply", id: string, rect: DOMRect): void;
   /** 按下便签任意位置 → 置顶 */
   (e: "focus"): void;
 }>();
+
+const { currentDoc } = useDocument();
+const ctx = computed<RenderContext>(() => ({
+  docPath: currentDoc.value?.path ?? "",
+  localres: inWailsShell(),
+}));
 
 const swatch = computed(
   () => HIGHLIGHT_COLORS.find((c) => c.value === (props.annotation.color ?? ""))?.swatch,
 );
 const resolved = computed(() => props.annotation.resolved);
+const isRoot = computed(() => !props.annotation.parentId);
+const authorDot = computed(() =>
+  authorColorOf(props.annotation.authorId, props.annotation.authorName),
+);
 
 const editing = ref(props.editing);
 const draft = ref(props.annotation.body ?? "");
@@ -40,14 +67,41 @@ const dragged = ref<{ x: number; y: number } | null>(null);
 const isDragging = ref(false);
 
 const renderedBody = computed(() =>
-  DOMPurify.sanitize(marked.parse(props.annotation.body || "*（无批注内容）*") as string),
+  renderNoteBody(props.annotation.body || "*（无批注内容）*", ctx.value),
 );
-const renderedDraft = computed(() => DOMPurify.sanitize(marked.parse(draft.value || "") as string));
+const renderedDraft = computed(() => renderNoteBody(draft.value, ctx.value));
+const renderedReplies = computed(() =>
+  (props.replies ?? []).map((n) => ({ ...n, html: renderNoteBody(n.anno.body, ctx.value) })),
+);
 
-// 默认位置：锚点右上角展开；靠右缘左移；靠下缘上移
+// ---- 回复 ----
+const replyDraft = ref("");
+
+function sendReply() {
+  const body = replyDraft.value.trim();
+  if (!body) return;
+  emit("reply", body);
+  replyDraft.value = "";
+}
+
+function onReplyKeydown(e: KeyboardEvent) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendReply();
+  } else if (e.key === "Escape") {
+    replyDraft.value = "";
+  }
+}
+
+function openReply(node: ReplyNode, e: MouseEvent) {
+  const note = (e.currentTarget as HTMLElement).closest(".sticky-note");
+  emit("openReply", node.anno.id, note?.getBoundingClientRect() ?? props.rect);
+}
+
+// ---- 位置与姿态 ----
 const basePos = computed(() => {
   const width = 340;
-  const height = editing.value ? 280 : 200;
+  const height = editing.value ? 300 : 220;
   const margin = 12;
   let x = props.rect.right + margin;
   if (x + width > window.innerWidth - margin) x = Math.max(margin, props.rect.left - width - margin);
@@ -136,12 +190,13 @@ function togglePreview() {
 }
 
 const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleString());
+const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 </script>
 
 <template>
   <div
     class="sticky-note"
-    :class="{ resolved, picked: isDragging }"
+    :class="{ resolved, picked: isDragging, 'is-reply': !isRoot }"
     :style="style"
     @click.stop
     @pointerdown="emit('focus')"
@@ -152,13 +207,19 @@ const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleStr
       title="拖动移动"
       @pointerdown="startDrag"
     >
-      <span v-if="swatch" class="color-dot" :style="{ background: swatch }"></span>
+      <span
+        class="author-dot"
+        :style="{ background: authorDot }"
+        :title="`作者色：${annotation.authorName}`"
+      ></span>
       <span class="author">{{ annotation.authorName }}</span>
+      <span v-if="swatch" class="color-dot" :style="{ background: swatch }" title="高亮颜色"></span>
       <span class="time">{{ timeText }}</span>
       <button
+        v-if="isRoot"
         class="icon-btn"
         :class="{ active: resolved }"
-        :title="resolved ? '标记为未解决' : '标记为已解决'"
+        :title="resolved ? '标记为未解决' : '标记为已解决（整条讨论串）'"
         @click="emit('resolve', !resolved)"
       >
         <Icon name="check" :size="14" />
@@ -174,10 +235,16 @@ const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleStr
       </button>
     </header>
 
-    <blockquote class="quote">{{ annotation.quote }}</blockquote>
+    <!-- 回复的便签：父批注上下文 -->
+    <div v-if="!isRoot" class="reply-context">
+      <Icon name="corner-down-right" :size="12" />
+      回复 <b>@{{ parentAuthor || "?" }}</b>
+      <span v-if="parentQuote" class="reply-context-quote">「{{ parentQuote.slice(0, 32) }}」</span>
+    </div>
+    <blockquote v-else class="quote">{{ annotation.quote }}</blockquote>
 
     <!-- 阅读态 -->
-    <!-- eslint-disable-next-line vue/no-v-html — 内容已经过 DOMPurify 消毒 -->
+    <!-- eslint-disable-next-line vue/no-v-html — 内容已经过消毒 -->
     <div v-if="!editing" class="body markdown-note" v-html="renderedBody"></div>
 
     <!-- 编辑态 -->
@@ -186,12 +253,12 @@ const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleStr
         v-if="!preview"
         v-model="draft"
         class="editor"
-        placeholder="批注内容（支持 Markdown）…"
+        placeholder="批注内容（支持 Markdown 与图片）…"
         rows="5"
         @keydown.ctrl.enter.prevent="save"
         @keydown.esc.prevent="editing = false"
       ></textarea>
-      <!-- eslint-disable-next-line vue/no-v-html — 内容已经过 DOMPurify 消毒 -->
+      <!-- eslint-disable-next-line vue/no-v-html — 内容已经过消毒 -->
       <div v-else class="editor preview markdown-note" v-html="renderedDraft"></div>
 
       <footer class="foot">
@@ -200,6 +267,38 @@ const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleStr
         <button class="btn primary" @click="save">保存</button>
       </footer>
     </template>
+
+    <!-- 直接子回复 -->
+    <div v-if="renderedReplies.length" class="replies">
+      <div
+        v-for="r in renderedReplies"
+        :key="r.anno.id"
+        class="reply"
+        :style="{ marginLeft: r.depth * 14 + 'px' }"
+        @click.stop="openReply(r, $event)"
+      >
+        <span class="author-dot small" :style="{ background: authorColorOf(r.anno.authorId, r.anno.authorName) }"></span>
+        <span class="reply-author">{{ r.anno.authorName }}</span>
+        <span class="reply-time">{{ replyTime(r.anno.createdAt) }}</span>
+        <button class="icon-btn danger reply-del" title="删除回复" @click.stop="emit('deleteReply', r.anno.id)">
+          <Icon name="x" :size="11" />
+        </button>
+        <!-- eslint-disable-next-line vue/no-v-html — 内容已经过消毒 -->
+        <div class="reply-body markdown-note" v-html="r.html"></div>
+      </div>
+    </div>
+
+    <!-- 回复输入 -->
+    <footer class="reply-compose">
+      <textarea
+        v-model="replyDraft"
+        class="reply-input"
+        rows="1"
+        placeholder="回复…（Enter 发送，Shift+Enter 换行）"
+        @keydown="onReplyKeydown"
+      ></textarea>
+      <button class="btn primary" :disabled="!replyDraft.trim()" @click="sendReply">发送</button>
+    </footer>
   </div>
 </template>
 
@@ -281,6 +380,21 @@ const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleStr
   flex-shrink: 0;
 }
 
+.author-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.author-dot.small {
+  width: 10px;
+  height: 10px;
+  border-width: 1px;
+}
+
 .head {
   display: flex;
   align-items: center;
@@ -347,12 +461,114 @@ const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleStr
   word-break: break-word;
 }
 
+.reply-context {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-left: 3px solid #f9a825;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--sticky-text, #4a431f);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.reply-context b {
+  font-weight: 700;
+}
+
+.reply-context-quote {
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .body {
   font-size: 13.5px;
   color: var(--sticky-text, #3f3a20);
   max-height: 220px;
   overflow-y: auto;
   word-break: break-word;
+}
+
+.replies {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+  padding-top: 8px;
+}
+
+.reply {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: baseline;
+  column-gap: 6px;
+  font-size: 12.5px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px 4px;
+}
+
+.reply:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.reply-author {
+  font-weight: 700;
+  color: var(--sticky-text, #6b5b1e);
+}
+
+.reply-time {
+  font-size: 10.5px;
+  opacity: 0.5;
+  text-align: right;
+}
+
+.reply-del {
+  opacity: 0;
+}
+
+.reply:hover .reply-del {
+  opacity: 0.66;
+}
+
+.reply-body {
+  grid-column: 1 / -1;
+  color: var(--sticky-text, #3f3a20);
+  word-break: break-word;
+  max-height: 88px;
+  overflow-y: auto;
+}
+
+.reply-compose {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.reply-input {
+  flex: 1;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #1a1a1a;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 8px;
+  resize: none;
+  min-height: 30px;
+  max-height: 96px;
+}
+
+.reply-input:focus {
+  outline: none;
+  border-color: #f9a825;
 }
 
 .editor {
@@ -415,7 +631,12 @@ const timeText = computed(() => new Date(props.annotation.createdAt).toLocaleStr
   font-weight: 700;
 }
 
-.btn.primary:hover {
+.btn.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn.primary:hover:not(:disabled) {
   background: #fbc02d;
 }
 </style>

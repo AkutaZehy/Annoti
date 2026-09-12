@@ -3,6 +3,7 @@
 
 import { ref } from "vue";
 import { getPlatform } from "@/platform";
+import { descendantIds } from "@/core/threads";
 import { useSettings } from "./useSettings";
 import type { Annotation, TextAnchor } from "@/types";
 
@@ -38,23 +39,47 @@ export function useAnnotations() {
   ): Promise<Annotation> {
     const docId = currentDocId();
     if (!docId) throw new Error("当前没有打开的文档");
-    const draft: Annotation = {
-      id: "",
-      documentId: docId,
-      authorId: "local",
-      authorName: settings.value.authorName || "Me",
-      quote,
-      body,
-      anchor,
-      color,
-      resolved: false,
-      createdAt: 0,
-      updatedAt: 0,
-    };
-    const saved = await getPlatform().saveAnnotation(draft);
-    annotations.value = [...annotations.value, saved];
-    return saved;
-  }
+  const draft: Annotation = {
+    id: "",
+    documentId: docId,
+    authorId: "local",
+    authorName: settings.value.authorName || "Me",
+    quote,
+    body,
+    anchor,
+    color,
+    resolved: false,
+    createdAt: 0,
+    updatedAt: 0,
+  };
+  const saved = await getPlatform().saveAnnotation(draft);
+  annotations.value = [...annotations.value, saved];
+  return saved;
+}
+
+/** 新建回复：无锚点、无引文，位置由父批注给。 */
+async function createReply(parentId: string, body: string): Promise<Annotation> {
+  const docId = currentDocId();
+  if (!docId) throw new Error("当前没有打开的文档");
+  const anchor: TextAnchor = { type: "text", start: 0, end: 0, exact: "", prefix: "", suffix: "" };
+  const draft: Annotation = {
+    id: "",
+    documentId: docId,
+    parentId,
+    authorId: "local",
+    authorName: settings.value.authorName || "Me",
+    quote: "",
+    body,
+    anchor,
+    color: "",
+    resolved: false,
+    createdAt: 0,
+    updatedAt: 0,
+  };
+  const saved = await getPlatform().saveAnnotation(draft);
+  annotations.value = [...annotations.value, saved];
+  return saved;
+}
 
   async function update(id: string, patch: Partial<Annotation>): Promise<Annotation | null> {
     const index = annotations.value.findIndex((a) => a.id === id);
@@ -68,8 +93,10 @@ export function useAnnotations() {
   }
 
   async function remove(id: string) {
-    annotations.value = annotations.value.filter((a) => a.id !== id);
-    if (activeId.value === id) activeId.value = null;
+    // 本地一次性清掉整棵子树（DB 侧由 parent_id 外键级联删除）
+    const doomed = descendantIds(annotations.value, id);
+    annotations.value = annotations.value.filter((a) => !doomed.has(a.id));
+    if (activeId.value && doomed.has(activeId.value)) activeId.value = null;
     await getPlatform().deleteAnnotation(id);
   }
 
@@ -88,6 +115,7 @@ export function useAnnotations() {
     loadFor,
     clear,
     create,
+    createReply,
     update,
     remove,
     setActive,

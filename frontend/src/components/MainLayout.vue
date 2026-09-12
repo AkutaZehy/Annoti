@@ -89,11 +89,11 @@ function onLocate(id: string) {
         <div v-else class="welcome">
           <div class="welcome-card">
             <h1>Read &amp; Note</h1>
-            <p>打开一份 Markdown 或纯文本文档，像在稿纸上一样划线、批注。</p>
+            <p>打开一份 Markdown、纯文本、HTML、JSON、XML 或 CSV 文档，像在稿纸上一样划线、批注、讨论。</p>
             <button class="open-btn" @click="openFile">
               <Icon name="folder-open" :size="15" /> 打开文档
             </button>
-            <small>批注数据保存在本地 SQLite 数据库，可通过 .annoti.json 与他人交换</small>
+            <small>批注数据保存在本地 SQLite 数据库，可通过 .annoti.json 与他人交换、离线合并讨论串</small>
           </div>
         </div>
       </section>

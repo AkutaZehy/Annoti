@@ -40,7 +40,8 @@ async function onImport() {
     if (!result) return; // 取消
     await loadFor(currentDoc.value.id);
     const warn = result.checksumSame ? "" : "（注意：导入包与当前文档内容不一致，批注位置可能偏移）";
-    emit("toast", `导入 ${result.imported} 条，跳过重复 ${result.skipped} 条 ${warn}`);
+    const updated = result.updated > 0 ? `，更新 ${result.updated} 条` : "";
+    emit("toast", `导入 ${result.imported} 条${updated}，跳过重复 ${result.skipped} 条 ${warn}`);
   } catch (e) {
     emit("toast", "导入失败: " + e);
   } finally {

@@ -37,11 +37,16 @@ export interface DocInfo {
 
 export interface OpenedDocument extends DocInfo {
   content: string;
-  mode: "md" | "txt";
+  mode: DocMode;
 }
+
+/** V2 支持的文档类型（渲染器按此分发，见 formats/） */
+export type DocMode = "md" | "txt" | "html" | "json" | "xml" | "csv";
 
 export interface ImportResult {
   imported: number;
+  /** 按 LWW 原位更新的已有批注（回复合并） */
+  updated: number;
   skipped: number;
   checksumSame: boolean;
 }

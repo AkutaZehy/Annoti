@@ -34,6 +34,10 @@ export function OpenDocumentPath(arg1) {
   return window['go']['main']['App']['OpenDocumentPath'](arg1);
 }
 
+export function OpenExternal(arg1) {
+  return window['go']['main']['App']['OpenExternal'](arg1);
+}
+
 export function SaveAnnotation(arg1) {
   return window['go']['main']['App']['SaveAnnotation'](arg1);
 }

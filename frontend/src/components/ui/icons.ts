@@ -45,6 +45,8 @@ export const PATHS = {
     "M12 9v4",
     "M12 17h.01",
   ],
+  "message-square": ["M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"],
+  "corner-down-right": ["m15 10 5 5-5 5", "M4 4v7a4 4 0 0 0 4 4h12"],
 } as const;
 
 export type ComponentName = keyof typeof PATHS;

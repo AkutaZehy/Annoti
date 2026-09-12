@@ -104,7 +104,7 @@ export const mockPlatform: Platform = {
     const annos = loadAnnotationsFromStore();
     const pack = {
       format: "annoti-annotations",
-      version: 1,
+      version: 2,
       exportedAt: Date.now(),
       document: { name: "示例文档.md", checksum: "mock" },
       annotations: annos,
@@ -134,5 +134,9 @@ export const mockPlatform: Platform = {
 
   async openDataDir() {
     console.info("Mock 模式：数据保存在 localStorage");
+  },
+
+  async openExternal(url: string) {
+    window.open(url, "_blank", "noopener");
   },
 };

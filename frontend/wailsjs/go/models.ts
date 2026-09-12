@@ -2,6 +2,7 @@ export namespace main {
 	
 	export class ImportResult {
 	    imported: number;
+	    updated: number;
 	    skipped: number;
 	    checksumSame: boolean;
 	
@@ -12,6 +13,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.imported = source["imported"];
+	        this.updated = source["updated"];
 	        this.skipped = source["skipped"];
 	        this.checksumSame = source["checksumSame"];
 	    }

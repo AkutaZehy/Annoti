@@ -161,3 +161,86 @@
 ::highlight(anno-flash) {
   background-color: rgba(239, 68, 68, 0.55);
 }
+
+/* ===========================================================================
+   V2：json/xml 源码视图着色 + CSV 表格
+   ======================================================================== */
+
+.tok-key {
+  color: #8250df;
+  font-weight: 600;
+}
+
+.tok-str {
+  color: #0a7d32;
+}
+
+.tok-num {
+  color: #b45309;
+}
+
+.tok-kw {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.tok-tag {
+  color: #0a7d32;
+}
+
+.tok-attr {
+  color: #8250df;
+}
+
+.tok-cmt {
+  color: #8a8779;
+  font-style: italic;
+}
+
+.dark-theme .tok-key,
+.dark-theme .tok-attr {
+  color: #c4a7ff;
+}
+
+.dark-theme .tok-str,
+.dark-theme .tok-tag {
+  color: #7fd39a;
+}
+
+.dark-theme .tok-num,
+.dark-theme .tok-kw {
+  color: #e0a458;
+}
+
+.dark-theme .tok-cmt {
+  color: #7c7566;
+}
+
+.csv-table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 13.5px;
+  width: 100%;
+}
+
+.csv-table th,
+.csv-table td {
+  border: 1px solid var(--table-border, #ddd);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.csv-table th {
+  background: var(--table-header-bg, #f5f2e9);
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+}
+
+.csv-table tbody tr:nth-child(odd) {
+  background: var(--table-row-odd-bg, rgba(0, 0, 0, 0.015));
+}

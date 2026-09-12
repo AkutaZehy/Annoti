@@ -14,18 +14,18 @@ var errInvalidUI = errors.New("UI 设置不是合法 JSON")
 
 // WindowState 窗口几何状态，由 Go 侧在启动/退出时读写。
 type WindowState struct {
-	Width      int  `json:"width"`
-	Height     int  `json:"height"`
-	X          int  `json:"x"`
-	Y          int  `json:"y"`
-	Maximized  bool `json:"maximized"`
+	Width     int  `json:"width"`
+	Height    int  `json:"height"`
+	X         int  `json:"x"`
+	Y         int  `json:"y"`
+	Maximized bool `json:"maximized"`
 }
 
 // settingsFile settings.json 的磁盘结构。
 // "ui" 是前端持有的不透明 JSON 块（主题、侧栏宽度、作者名等），
 // Go 不解释其内容，只负责存取 —— 前后端互不侵入。
 type settingsFile struct {
-	Window *WindowState  `json:"window,omitempty"`
+	Window *WindowState    `json:"window,omitempty"`
 	UI     json.RawMessage `json:"ui,omitempty"`
 }
 

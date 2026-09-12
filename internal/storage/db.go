@@ -33,7 +33,7 @@ func Open() (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("无法定位用户配置目录: %w", err)
 	}
-	return OpenAt(filepath.Join(base, "AnnotiV1"))
+	return OpenAt(filepath.Join(base, "AnnotiV2"))
 }
 
 // OpenAt 在指定目录初始化存储（测试用）。
@@ -61,7 +61,7 @@ func (s *Store) Close() error { return s.db.Close() }
 func (s *Store) Dir() string { return s.dir }
 
 func (s *Store) migrate() error {
-	_, err := s.db.Exec(`
+	if _, err := s.db.Exec(`
 CREATE TABLE IF NOT EXISTS documents (
 	id          TEXT PRIMARY KEY,
 	path        TEXT NOT NULL UNIQUE,
@@ -86,8 +86,20 @@ CREATE TABLE IF NOT EXISTS annotations (
 	updated_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_annotations_doc ON annotations(document_id);
-`)
+CREATE INDEX IF NOT EXISTS idx_annotations_parent ON annotations(parent_id);
+`); err != nil {
+		return err
+	}
+	// schema 版本标记：V2（讨论串激活，无破坏性列变更）
+	_, err := s.db.Exec(`PRAGMA user_version = 2`)
 	return err
+}
+
+// SchemaVersion 返回当前库的 user_version。
+func (s *Store) SchemaVersion() (int, error) {
+	var v int
+	err := s.db.QueryRow(`PRAGMA user_version`).Scan(&v)
+	return v, err
 }
 
 func now() int64 { return time.Now().UnixMilli() }

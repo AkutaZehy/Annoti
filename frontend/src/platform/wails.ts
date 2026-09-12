@@ -1,6 +1,7 @@
 // Wails 桥接：调用 Go 后端绑定，并做生成模型类 ↔ 应用层对象的转换。
 
 import type { Annotation, ImportResult, OpenedDocument, TextAnchor } from "@/types";
+import { docModeOf } from "@/formats";
 import type { Platform } from "./index";
 import {
   OpenDocument,
@@ -13,12 +14,9 @@ import {
   GetUI,
   SetUI,
   OpenDataDir,
+  OpenExternal,
 } from "../../wailsjs/go/main/App";
 import { models } from "../../wailsjs/go/models";
-
-function detectMode(path: string): "md" | "txt" {
-  return /\.txt$/i.test(path) ? "txt" : "md";
-}
 
 /** 生成的文档模型 → 应用层对象 */
 function toOpenedDocument(d: Record<string, unknown>): OpenedDocument {
@@ -33,7 +31,7 @@ function toOpenedDocument(d: Record<string, unknown>): OpenedDocument {
     createdAt: Number(d.createdAt ?? 0),
     updatedAt: Number(d.updatedAt ?? 0),
     content: String(d.content ?? ""),
-    mode: detectMode(path),
+    mode: docModeOf(path),
   };
 }
 
@@ -70,6 +68,7 @@ export const wailsPlatform: Platform = {
     if (!result) return null;
     return {
       imported: result.imported,
+      updated: result.updated,
       skipped: result.skipped,
       checksumSame: result.checksumSame,
     } satisfies ImportResult;
@@ -85,6 +84,10 @@ export const wailsPlatform: Platform = {
 
   async openDataDir() {
     await OpenDataDir();
+  },
+
+  async openExternal(url) {
+    await OpenExternal(url);
   },
 };
 

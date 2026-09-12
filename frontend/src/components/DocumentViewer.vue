@@ -4,33 +4,24 @@
 // 因此 Vue 重渲染不会破坏高亮，也无需任何"恢复"逻辑。
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
 import { buildTextIndex, offsetsToRange, type TextIndex } from "@/core/textIndex";
 import { makeAnchor, resolveAnchor } from "@/core/anchor";
-import { localizeMarkdownImages } from "@/core/resolveImages";
+import { descendantIds, buildThreads } from "@/core/threads";
 import { HighlightPainter } from "@/core/highlight";
+import { renderDocument } from "@/formats";
+import { inWailsShell, getPlatform } from "@/platform";
+import type { DocMode } from "@/types";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useDocument } from "@/composables/useDocument";
 import SelectionToolbar from "./SelectionToolbar.vue";
 import StickyNote from "./StickyNote.vue";
+import Icon from "./ui/Icon.vue";
 
-const props = defineProps<{ content: string; mode: "md" | "txt" }>();
+const props = defineProps<{ content: string; mode: DocMode }>();
 
 const { currentDoc } = useDocument();
-const { annotations, activeId, create, update, remove, setActive, markOrphaned } = useAnnotations();
-
-/** 是否运行在 Wails 壳内（/local/ 本地资源端点只在壳内可用） */
-function inWailsShell(): boolean {
-  const w = window as unknown as { go?: unknown; runtime?: unknown };
-  return Boolean(w.go || w.runtime);
-}
-
-// DOMPurify 默认 URI 白名单会剥掉 file: 与 data:，
-// 这里放行它们（随后由 localizeMarkdownImages 改写为 /local/ 端点）。
-// 注：字符类里的 - 置于开头/结尾，避免 eslint no-useless-escape。
-const PURIFY_URI_RE =
-  /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data|file|local):|[^a-z]|[a-z+.-]+(?:[^-a-z+.:]|$))/i;
+const { annotations, activeId, create, createReply, update, remove, setActive, markOrphaned } =
+  useAnnotations();
 
 const containerRef = ref<HTMLElement | null>(null);
 let index: TextIndex | null = null;
@@ -39,13 +30,16 @@ const painter = new HighlightPainter();
 /** 每条批注当前解析出的文本流区间（命中检测与定位用） */
 const resolved = new Map<string, { start: number; end: number }>();
 
-const renderedHtml = computed(() => {
-  if (props.mode === "txt") return "";
-  const clean = DOMPurify.sanitize(marked.parse(props.content, { gfm: true, breaks: true }) as string, {
-    ALLOWED_URI_REGEXP: PURIFY_URI_RE,
-  });
-  return localizeMarkdownImages(clean, currentDoc.value?.path ?? "", inWailsShell());
-});
+/** 渲染层分发：md/txt/html/json/xml/csv → 规范 HTML（已消毒/转义） */
+const renderResult = computed(() =>
+  renderDocument(props.mode, props.content, {
+    docPath: currentDoc.value?.path ?? "",
+    localres: inWailsShell(),
+  }),
+);
+
+/** 讨论串索引（侧栏与便签共用；childrenOf 供便签显示直接子回复） */
+const threadIndex = computed(() => buildThreads(annotations.value));
 
 // ---- 渲染与重建 ----
 
@@ -158,13 +152,23 @@ async function onToolbarAction(withNote: boolean, color?: string) {
 const openNotes = ref(new Map<string, { rect: DOMRect; editing: boolean }>());
 
 const noteCards = computed(() =>
-  [...openNotes.value.entries()]
-    .map(([id, meta], idx) => ({
-      annotation: annotations.value.find((a) => a.id === id),
-      meta,
-      idx,
-    }))
-    .filter((c) => c.annotation !== undefined),
+  [...openNotes.value.entries()].flatMap(([id, meta], idx) => {
+    const annotation = annotations.value.find((a) => a.id === id);
+    if (!annotation) return [];
+    const parent = annotation.parentId
+      ? annotations.value.find((a) => a.id === annotation.parentId)
+      : undefined;
+    return [
+      {
+        annotation,
+        meta,
+        idx,
+        replies: threadIndex.value.childrenOf.get(id) ?? [],
+        parentAuthor: parent?.authorName,
+        parentQuote: parent?.quote,
+      },
+    ];
+  }),
 );
 
 function openNote(id: string, rect: DOMRect, editing = false) {
@@ -200,12 +204,42 @@ async function onNoteResolve(id: string, value: boolean) {
   await update(id, { resolved: value });
 }
 
-async function onNoteDelete(id: string) {
-  openNotes.value.delete(id);
+/** 删除带确认：根批注会级联删除整条讨论串 */
+async function removeWithConfirm(id: string) {
+  const extra = descendantIds(annotations.value, id).size - 1;
+  if (extra > 0 && !window.confirm(`删除该批注及其 ${extra} 条回复？`)) return;
   await remove(id);
 }
 
+async function onNoteDelete(id: string) {
+  openNotes.value.delete(id);
+  await removeWithConfirm(id);
+}
+
+async function onNoteDeleteReply(id: string) {
+  await removeWithConfirm(id);
+}
+
+async function onNoteReply(parentId: string, body: string) {
+  await createReply(parentId, body);
+}
+
+/** 在便签里点某条回复 → 就地摊开该回复的便签 */
+function onOpenReply(replyId: string, rect: DOMRect) {
+  openNote(replyId, rect);
+}
+
 function onDocClick(e: MouseEvent) {
+  // 文档内链接不在应用内导航，交给系统浏览器（html 格式）
+  const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+  if (link) {
+    e.preventDefault();
+    const href = link.getAttribute("href") ?? "";
+    if (href) {
+      getPlatform().openExternal(href).catch((err) => console.error("打开外部链接失败:", err));
+    }
+    return;
+  }
   const sel = window.getSelection();
   if (sel && !sel.isCollapsed) return; // 正在选字
   if (!index) return;
@@ -303,13 +337,20 @@ defineExpose({ locate });
 
 <template>
   <div class="viewer-scroll" @click="onDocClick">
-    <div ref="containerRef" class="doc-content" :class="{ 'plain-text': mode === 'txt' }">
-      <template v-if="mode === 'txt'">{{ content }}</template>
-      <!-- eslint-disable-next-line vue/no-v-html — 内容已经过 DOMPurify 消毒 -->
-      <div v-else v-html="renderedHtml"></div>
+    <div
+      ref="containerRef"
+      class="doc-content"
+      :class="{ 'plain-text': mode === 'txt', 'source-doc': mode === 'json' || mode === 'xml' }"
+    >
+      <!-- eslint-disable-next-line vue/no-v-html — 渲染层输出已消毒/转义 -->
+      <div v-html="renderResult.html"></div>
     </div>
 
     <div v-if="!content" class="viewer-empty">文档为空</div>
+    <div v-else-if="renderResult.warning" class="render-warning">
+      <Icon name="alert-triangle" :size="13" />
+      {{ renderResult.warning }}
+    </div>
 
     <SelectionToolbar
       v-if="toolbar"
@@ -322,16 +363,22 @@ defineExpose({ locate });
 
     <StickyNote
       v-for="card in noteCards"
-      :key="card.annotation!.id"
-      :annotation="card.annotation!"
+      :key="card.annotation.id"
+      :annotation="card.annotation"
       :rect="card.meta.rect"
       :editing="card.meta.editing"
+      :replies="card.replies"
+      :parent-author="card.parentAuthor"
+      :parent-quote="card.parentQuote"
       :z-index="210 + card.idx"
-      @save="(body: string) => onNoteSave(card.annotation!.id, body)"
-      @delete="onNoteDelete(card.annotation!.id)"
-      @close="closeNote(card.annotation!.id)"
-      @resolve="(v: boolean) => onNoteResolve(card.annotation!.id, v)"
-      @focus="bringToFront(card.annotation!.id)"
+      @save="(body: string) => onNoteSave(card.annotation.id, body)"
+      @delete="onNoteDelete(card.annotation.id)"
+      @close="closeNote(card.annotation.id)"
+      @resolve="(v: boolean) => onNoteResolve(card.annotation.id, v)"
+      @reply="(body: string) => onNoteReply(card.annotation.id, body)"
+      @delete-reply="(id: string) => onNoteDeleteReply(id)"
+      @open-reply="onOpenReply"
+      @focus="bringToFront(card.annotation.id)"
     />
   </div>
 </template>
@@ -359,6 +406,30 @@ defineExpose({ locate });
   white-space: pre-wrap;
   word-break: break-word;
   font-family: "Source Han Sans", "Noto Sans CJK SC", system-ui, sans-serif;
+}
+
+/* json/xml 源码视图：等宽 + 更紧凑的行距（字体与着色见 markdown.css） */
+.doc-content.source-doc > div {
+  font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.render-warning {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto;
+  max-width: 880px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.08);
+  border-top: 1px solid rgba(180, 83, 9, 0.25);
 }
 
 .viewer-empty {

@@ -22,6 +22,14 @@ export interface Platform {
   getUI(): Promise<string>;
   setUI(json: string): Promise<void>;
   openDataDir(): Promise<void>;
+  /** 用系统默认浏览器打开外部链接（文档内 <a> 不在应用内导航） */
+  openExternal(url: string): Promise<void>;
+}
+
+/** 是否运行在 Wails 壳内（/local/ 本地资源端点只在壳内可用） */
+export function inWailsShell(): boolean {
+  const w = window as unknown as { runtime?: unknown; go?: unknown };
+  return Boolean(w.runtime || w.go);
 }
 
 let instance: Platform | null = null;
@@ -30,8 +38,7 @@ export function getPlatform(): Platform {
   if (!instance) {
     // Wails v2 运行时注入 window.runtime / window.go；
     // wailsjs 生成代码只在调用时访问它们，因此静态导入对浏览器构建无害。
-    const w = window as unknown as { runtime?: unknown; go?: unknown };
-    instance = w.runtime || w.go ? wailsPlatform : mockPlatform;
+    instance = inWailsShell() ? wailsPlatform : mockPlatform;
   }
   return instance;
 }

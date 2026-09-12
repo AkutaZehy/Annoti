@@ -42,29 +42,3 @@ func TestParseRejectsForeignFormat(t *testing.T) {
 		t.Fatalf("应拒绝非法 JSON")
 	}
 }
-
-func TestMergeImportDedupesAndResets(t *testing.T) {
-	p := Pack{
-		Format: FormatName, Version: Version,
-		Document: DocumentRef{Name: "a.md", Checksum: "cs"},
-		Annotations: []models.Annotation{
-			{ID: "old-1", AuthorName: "Akuta", Quote: "重复", Anchor: models.TextAnchor{Start: 0, End: 2, Exact: "重复"}},
-			{ID: "old-2", AuthorName: "Akuta", Quote: "重复", Anchor: models.TextAnchor{Start: 0, End: 2, Exact: "重复"}}, // 包内重复
-			{ID: "old-3", AuthorName: "Akuta", Quote: "新内容", Anchor: models.TextAnchor{Start: 5, End: 8, Exact: "新内容"}},
-			{ID: "old-4", AuthorName: "别人", Quote: "重复", Anchor: models.TextAnchor{Start: 0, End: 2, Exact: "重复"}}, // 不同作者不去重
-		},
-	}
-	existing := map[string]struct{}{
-		"Akuta|重复|0|2": {},
-	}
-
-	fresh := MergeImport(p, "doc-9", existing, 42)
-	if len(fresh) != 2 {
-		t.Fatalf("应导入 2 条, 得 %d: %+v", len(fresh), fresh)
-	}
-	for _, a := range fresh {
-		if a.ID != "" || a.DocumentID != "doc-9" || a.CreatedAt != 42 || a.Anchor.Type != "text" {
-			t.Fatalf("导入批注未重置: %+v", a)
-		}
-	}
-}

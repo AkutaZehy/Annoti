@@ -19,6 +19,8 @@ export function OpenDocument():Promise<models.Document>;
 
 export function OpenDocumentPath(arg1:string):Promise<models.Document>;
 
+export function OpenExternal(arg1:string):Promise<void>;
+
 export function SaveAnnotation(arg1:models.Annotation):Promise<models.Annotation>;
 
 export function SetUI(arg1:string):Promise<void>;

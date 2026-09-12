@@ -12,7 +12,7 @@ import (
 
 const (
 	FormatName = "annoti-annotations"
-	Version    = 1
+	Version    = 2
 )
 
 // DocumentRef 导出包中携带的源文档指纹。
@@ -23,10 +23,10 @@ type DocumentRef struct {
 
 // Pack 交换文件结构。
 type Pack struct {
-	Format      string             `json:"format"`
-	Version     int                `json:"version"`
-	ExportedAt  int64              `json:"exportedAt"`
-	Document    DocumentRef        `json:"document"`
+	Format      string              `json:"format"`
+	Version     int                 `json:"version"`
+	ExportedAt  int64               `json:"exportedAt"`
+	Document    DocumentRef         `json:"document"`
 	Annotations []models.Annotation `json:"annotations"`
 }
 
