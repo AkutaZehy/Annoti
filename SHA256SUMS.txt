@@ -1,0 +1,2 @@
+eb5bec375c363566ebb7133e12771c6ffd71afe46d7dc831117fbbfb8ff691a8  annoti.exe
+68a5ba74ccd433a5f091aab4c6a68e7721306b34e4c2b6875562ef19bb244069  Annoti_1.0.0-delta_windows_amd64.zip

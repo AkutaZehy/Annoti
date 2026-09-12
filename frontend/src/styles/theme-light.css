@@ -1,0 +1,59 @@
+/* 浅色主题：暖纸 + 墨色（编辑排版风格）
+   命名沿用旧 token，组件可直接引用；色值全部换成纸感暖色系。 */
+:root,
+.light-theme {
+  color-scheme: light;
+
+  /* 纸与墨 */
+  --bg-primary: #faf9f5;
+  --bg-secondary: #f1efe7;
+  --bg-tertiary: #e8e5da;
+  --text-primary: #37352f;
+  --text-secondary: #6f6a5e;
+  --text-tertiary: #a39d8d;
+
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --border: #e2ded2;
+  --border-light: #edeae0;
+
+  /* 文档阅读面 */
+  --doc-bg: #fbfaf6;
+  --doc-text: #37352f;
+
+  --code-bg: #f0eee5;
+  --code-text: #37352f;
+  --blockquote-border-left: #d8d2c2;
+  --blockquote-color: #6f6a5e;
+  --link-color: #a15c1b;
+  --link-hover-color: #8a4c12;
+
+  --table-border: #e2ded2;
+  --table-header-bg: #f1efe7;
+  --table-row-odd-bg: transparent;
+
+  /* 便签（暖纸黄） */
+  --sticky-bg: #fbf3cf;
+  --sticky-header: #f3e6a8;
+  --sticky-text: #4a431f;
+
+  /* 侧栏 / 按钮 / 输入 */
+  --sidebar-bg: #f5f3ec;
+  --sidebar-border: #e2ded2;
+  --btn-primary-bg: #37352f;
+  --btn-primary-text: #faf9f5;
+  --btn-secondary-bg: transparent;
+  --btn-secondary-text: #37352f;
+  --btn-secondary-border: #ddd8ca;
+  --input-bg: #fdfcf9;
+  --input-border: #ddd8ca;
+  --input-text: #37352f;
+  --input-placeholder: #a39d8d;
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #d5d0c1;
+  --scrollbar-thumb-hover: #bdb7a5;
+
+  /* 排版 */
+  --font-serif: Georgia, "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+}

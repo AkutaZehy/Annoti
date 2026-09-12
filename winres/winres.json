@@ -1,0 +1,74 @@
+{
+  "RT_GROUP_ICON": {
+    "APP": {
+      "0000": [
+        "../build/windows/icon.ico"
+      ]
+    }
+  },
+  "RT_MANIFEST": {
+    "#1": {
+      "0409": {
+        "identity": {
+          "name": "Annoti",
+          "version": "1.0.0.0"
+        },
+        "description": "Annoti - 本地文档批注工具",
+        "minimum-os": "win10",
+        "execution-level": "as invoker",
+        "ui-access": false,
+        "auto-elevate": false,
+        "dpi-awareness": "system",
+        "disable-theming": false,
+        "disable-window-filtering": false,
+        "high-resolution-scrolling-aware": false,
+        "ultra-high-resolution-scrolling-aware": false,
+        "long-path-aware": true,
+        "printer-driver-isolation": false,
+        "gdi-scaling": false,
+        "segment-heap": false,
+        "use-common-controls-v6": false
+      }
+    }
+  },
+  "RT_VERSION": {
+    "#1": {
+      "0000": {
+        "fixed": {
+          "file_version": "1.0.0.0",
+          "product_version": "1.0.0.0"
+        },
+        "info": {
+          "0409": {
+            "Comments": "Annoti 1.0.0-delta - V1 core annotation engine (Wails v2 + Go rewrite)",
+            "CompanyName": "Akuta Zehy",
+            "FileDescription": "Annoti - Local document annotation tool",
+            "FileVersion": "1.0.0-delta",
+            "InternalName": "annoti",
+            "LegalCopyright": "Copyright (C) 2026 Akuta Zehy. MIT License.",
+            "LegalTrademarks": "",
+            "OriginalFilename": "annoti.exe",
+            "PrivateBuild": "",
+            "ProductName": "Annoti",
+            "ProductVersion": "1.0.0-delta",
+            "SpecialBuild": ""
+          },
+          "2052": {
+            "Comments": "Annoti 1.0.0-delta —— V1 核心批注引擎（Wails v2 + Go 重写版）",
+            "CompanyName": "Akuta Zehy",
+            "FileDescription": "Annoti - 本地文档批注工具",
+            "FileVersion": "1.0.0-delta",
+            "InternalName": "annoti",
+            "LegalCopyright": "版权所有 (C) 2026 Akuta Zehy。基于 MIT 许可证开源。",
+            "LegalTrademarks": "",
+            "OriginalFilename": "annoti.exe",
+            "PrivateBuild": "",
+            "ProductName": "Annoti",
+            "ProductVersion": "1.0.0-delta",
+            "SpecialBuild": ""
+          }
+        }
+      }
+    }
+  }
+}

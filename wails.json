@@ -1,0 +1,18 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "annoti",
+  "outputfilename": "annoti",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm build",
+  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Akuta Zehy"
+  },
+  "info": {
+    "productName": "Annoti",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026 Akuta Zehy",
+    "comments": "Annoti 1.0.0-delta — 本地文档批注工具（V1 核心批注引擎）"
+  }
+}

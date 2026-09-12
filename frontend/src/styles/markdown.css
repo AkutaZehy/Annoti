@@ -1,0 +1,163 @@
+/* 文档正文排版（Markdown 渲染结果与批注卡片内的 Markdown） */
+
+/* 文档标题用衬线，营造编辑/书卷气质 */
+.doc-content :is(h1, h2, h3, h4) {
+  font-family: var(--font-serif, Georgia, serif);
+}
+
+.doc-content :is(h1, h2, h3, h4) {
+  margin: 1.4em 0 0.6em;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.doc-content h1 {
+  font-size: 1.75em;
+  border-bottom: 1px solid var(--border, #ddd);
+  padding-bottom: 0.3em;
+}
+
+.doc-content h2 {
+  font-size: 1.4em;
+  border-bottom: 1px solid var(--border, #ddd);
+  padding-bottom: 0.25em;
+}
+
+.doc-content h3 {
+  font-size: 1.18em;
+}
+
+.doc-content p {
+  margin: 0.9em 0;
+}
+
+.doc-content a {
+  color: var(--link-color, #3b82f6);
+  text-decoration: none;
+}
+
+.doc-content a:hover {
+  color: var(--link-hover-color, #2563eb);
+  text-decoration: underline;
+}
+
+.doc-content blockquote {
+  margin: 1em 0;
+  padding: 0.4em 1em;
+  border-left: 4px solid var(--blockquote-border-left, #ddd);
+  color: var(--blockquote-color, #666);
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 0 6px 6px 0;
+}
+
+.doc-content code {
+  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 0.88em;
+  background: var(--code-bg, #f0f0f0);
+  color: var(--code-text, #1a1a1a);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+.doc-content pre {
+  background: var(--code-bg, #1e1e1e);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+.doc-content pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+.doc-content :is(ul, ol) {
+  padding-left: 1.6em;
+  margin: 0.8em 0;
+}
+
+.doc-content li {
+  margin: 0.25em 0;
+}
+
+.doc-content table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+
+.doc-content :is(th, td) {
+  border: 1px solid var(--table-border, #ddd);
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.doc-content th {
+  background: var(--table-header-bg, #f5f5f5);
+  font-weight: 600;
+}
+
+.doc-content tr:nth-child(odd) td {
+  background: var(--table-row-odd-bg, transparent);
+}
+
+.doc-content img {
+  max-width: 100%;
+}
+
+.doc-content hr {
+  border: none;
+  border-top: 1px solid var(--border, #ddd);
+  margin: 2em 0;
+}
+
+/* 批注卡片/侧栏内的 Markdown 正文 */
+.markdown-note :is(p, ul, ol, blockquote, pre) {
+  margin: 0.35em 0;
+}
+
+.markdown-note code {
+  font-size: 0.88em;
+  background: var(--code-bg, #f0f0f0);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.markdown-note :is(h1, h2, h3, h4) {
+  font-size: 1em;
+  margin: 0.4em 0;
+}
+
+/* ---- 批注高亮（CSS Custom Highlight API 着色桶） ----
+   默认黄 + 四个可选手色；active/flash 为焦点态，临时覆盖颜色身份。 */
+
+::highlight(anno-base) {
+  background-color: rgba(246, 205, 70, 0.5);
+}
+
+::highlight(anno-c-green) {
+  background-color: rgba(134, 187, 82, 0.42);
+}
+
+::highlight(anno-c-blue) {
+  background-color: rgba(96, 165, 250, 0.38);
+}
+
+::highlight(anno-c-pink) {
+  background-color: rgba(244, 114, 182, 0.38);
+}
+
+::highlight(anno-c-orange) {
+  background-color: rgba(251, 146, 60, 0.42);
+}
+
+::highlight(anno-active) {
+  background-color: rgba(217, 119, 6, 0.55);
+}
+
+::highlight(anno-flash) {
+  background-color: rgba(239, 68, 68, 0.55);
+}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN" class="light-theme">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Annoti</title>
+    <style>
+      /* 内联样式确保在 JS 加载前就有正确主题 */
+      .light-theme {
+        --bg-primary: #faf9f5;
+        --text-primary: #37352f;
+        background-color: #faf9f5;
+        color: #37352f;
+      }
+      .dark-theme {
+        --bg-primary: #26241e;
+        --text-primary: #e9e5d9;
+        background-color: #26241e;
+        color: #e9e5d9;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

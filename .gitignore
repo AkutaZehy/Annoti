@@ -29,3 +29,10 @@ dist-ssr
 CLAUDE.md
 .claude/*
 .claude/settings.local.json
+
+# Wails
+/build/bin/
+/frontend/.pnpm-store/
+
+# Wails 构建缓存
+frontend/package.json.md5

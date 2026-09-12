@@ -1,0 +1,53 @@
+/* 深色主题：暖炭 + 米墨（同一纸感体系的夜间版） */
+.dark-theme {
+  color-scheme: dark;
+
+  --bg-primary: #26241e;
+  --bg-secondary: #2d2a23;
+  --bg-tertiary: #38342b;
+  --text-primary: #e9e5d9;
+  --text-secondary: #aba494;
+  --text-tertiary: #7c7566;
+
+  --accent: #d97706;
+  --accent-hover: #f59e0b;
+  --border: #3e3a2f;
+  --border-light: #35322a;
+
+  --doc-bg: #22201a;
+  --doc-text: #e9e5d9;
+
+  --code-bg: #302d25;
+  --code-text: #e9e5d9;
+  --blockquote-border-left: #4a4538;
+  --blockquote-color: #aba494;
+  --link-color: #e0a458;
+  --link-hover-color: #f0b76e;
+
+  --table-border: #3e3a2f;
+  --table-header-bg: #2d2a23;
+  --table-row-odd-bg: transparent;
+
+  /* 便签：暗纸黄，保持可读 */
+  --sticky-bg: #3b3520;
+  --sticky-header: #4a4329;
+  --sticky-text: #efe7c6;
+
+  --sidebar-bg: #292720;
+  --sidebar-border: #3e3a2f;
+  --btn-primary-bg: #e9e5d9;
+  --btn-primary-text: #22201a;
+  --btn-secondary-bg: transparent;
+  --btn-secondary-text: #e9e5d9;
+  --btn-secondary-border: #4a4538;
+  --input-bg: #2d2a23;
+  --input-border: #4a4538;
+  --input-text: #e9e5d9;
+  --input-placeholder: #7c7566;
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #454136;
+  --scrollbar-thumb-hover: #5a5443;
+
+  --font-serif: Georgia, "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+}
