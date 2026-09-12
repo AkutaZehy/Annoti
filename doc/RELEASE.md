@@ -79,3 +79,8 @@ scripts/release.sh --notes build/dist/notes.md
   **不含 winres.json 的版本信息**（exe 属性版本为空）；必须用 `make`。且 `make` 只认 PNG/JPG
   （≤256x256），winres.json 引用 .ico 会报 `image: unknown format`——图标源定为 winres/icon.png。
   `build/windows/icon.ico` 是 wails build 自用产物，与发布 syso 无关。
+- **换了图标但"看起来没换"**（2026-09-13，v2.0.0-alpha）：发布构建把新 exe 覆盖到与上一版相同的
+  路径，Windows 图标缓存仍显示旧图（同路径同名覆盖的经典坑）。验证真身须绕过缓存：
+  `SHDefExtractIcon` 直读资源，或把 exe 改名/复制一份再看；给用户侧的修法是 `ie4uinit.exe -show`
+  或删除 `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db` 后重启 explorer，
+  任务栏/开始菜单钉住的旧快捷方式需重新钉。
