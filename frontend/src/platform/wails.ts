@@ -16,6 +16,7 @@ import {
   OpenDataDir,
   OpenExternal,
 } from "../../wailsjs/go/main/App";
+import { EventsOn, EventsOff } from "../../wailsjs/runtime/runtime";
 import { models } from "../../wailsjs/go/models";
 
 /** 生成的文档模型 → 应用层对象 */
@@ -32,6 +33,7 @@ function toOpenedDocument(d: Record<string, unknown>): OpenedDocument {
     updatedAt: Number(d.updatedAt ?? 0),
     content: String(d.content ?? ""),
     mode: docModeOf(path),
+    libraryPath: d.libraryPath ? String(d.libraryPath) : undefined,
   };
 }
 
@@ -89,12 +91,20 @@ export const wailsPlatform: Platform = {
   async openExternal(url) {
     await OpenExternal(url);
   },
+
+  onDroppedDocument(cb) {
+    EventsOn("doc:dropped", (doc: unknown) => {
+      cb(toOpenedDocument((doc ?? {}) as Record<string, unknown>));
+    });
+    return () => EventsOff("doc:dropped");
+  },
 };
 
 /** 生成的模型类 → 应用层普通对象 */
 function normalizeAnnotation(m: models.Annotation | null | undefined): Annotation {
   const a = (m ?? {}) as unknown as Record<string, unknown>;
   const anchor = (a.anchor ?? {}) as Partial<TextAnchor>;
+  const region = anchor.region as TextAnchor["region"] | undefined;
   return {
     id: String(a.id ?? ""),
     documentId: String(a.documentId ?? ""),
@@ -104,12 +114,22 @@ function normalizeAnnotation(m: models.Annotation | null | undefined): Annotatio
     quote: String(a.quote ?? ""),
     body: String(a.body ?? ""),
     anchor: {
-      type: "text",
+      type: anchor.type === "region" ? "region" : "text",
       start: Number(anchor.start ?? 0),
       end: Number(anchor.end ?? 0),
       exact: String(anchor.exact ?? ""),
       prefix: String(anchor.prefix ?? ""),
       suffix: String(anchor.suffix ?? ""),
+      region: region
+        ? {
+            x: Number(region.x ?? 0),
+            y: Number(region.y ?? 0),
+            w: Number(region.w ?? 0),
+            h: Number(region.h ?? 0),
+            img: region.img ? String(region.img) : undefined,
+            page: Boolean((region as { page?: boolean }).page),
+          }
+        : undefined,
     },
     color: a.color ? String(a.color) : undefined,
     resolved: Boolean(a.resolved),
@@ -128,6 +148,7 @@ function toModel(a: Annotation): models.Annotation {
     exact: a.anchor.exact,
     prefix: a.anchor.prefix,
     suffix: a.anchor.suffix,
+    region: a.anchor.region ? { ...a.anchor.region } : undefined,
   });
   const m = new models.Annotation();
   Object.assign(m, {

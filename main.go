@@ -26,8 +26,14 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			// 内嵌资源未命中的请求落到这里：/local/<base64url(绝对路径)>
-			// 用于渲染 Markdown 引用的本地图片。
+			// 用于渲染 Markdown 引用的本地图片与 EPUB 解包产物。
 			Handler: localres.Handler(),
+		},
+		// 拖拽文件到窗口打开（回调在 app.startup 里注册，走 doc:dropped 事件）
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop:     true,
+			DisableWebViewDrop: true,
+			CSSDropProperty:    "--wails-drop-target",
 		},
 		OnStartup:  app.startup,
 		OnShutdown: app.shutdown,

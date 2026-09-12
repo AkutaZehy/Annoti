@@ -5,7 +5,7 @@
 // V2：回复输入框 + 直接子回复列表（点回复可摊开它的便签），
 //     批注正文与回复支持 Markdown 与本地图片；作者色按人稳定。
 
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import type { Annotation } from "@/types";
 import type { ReplyNode } from "@/core/threads";
 import { authorColorOf } from "@/core/authors";
@@ -14,6 +14,7 @@ import { renderNoteBody } from "@/formats/markdown";
 import type { RenderContext } from "@/formats";
 import { inWailsShell } from "@/platform";
 import { useDocument } from "@/composables/useDocument";
+import { useSettings } from "@/composables/useSettings";
 import Icon from "./ui/Icon.vue";
 
 const props = defineProps<{
@@ -46,6 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const { currentDoc } = useDocument();
+const { settings } = useSettings();
 const ctx = computed<RenderContext>(() => ({
   docPath: currentDoc.value?.path ?? "",
   localres: inWailsShell(),
@@ -99,6 +101,29 @@ function openReply(node: ReplyNode, e: MouseEvent) {
 }
 
 // ---- 位置与姿态 ----
+// 2.1：拖拽位置持久化（settings.notePositions，键 = 文档ID/批注ID），
+// 重开会话便签回到上次拖到的位置。
+const posKey = computed(() => `${currentDoc.value?.id ?? "?"}/${props.annotation.id}`);
+
+function clampPos(p: { x: number; y: number }): { x: number; y: number } {
+  return {
+    x: Math.max(8, Math.min(p.x, window.innerWidth - 348)),
+    y: Math.max(8, Math.min(p.y, window.innerHeight - 48)),
+  };
+}
+
+onMounted(() => {
+  const saved = settings.value.notePositions?.[posKey.value];
+  if (saved) dragged.value = clampPos(saved);
+});
+
+function rememberPosition() {
+  if (!dragged.value) return;
+  const map = { ...(settings.value.notePositions ?? {}) };
+  map[posKey.value] = { ...dragged.value };
+  settings.value.notePositions = map;
+}
+
 const basePos = computed(() => {
   const width = 340;
   const height = editing.value ? 300 : 220;
@@ -164,6 +189,7 @@ function startDrag(e: PointerEvent) {
     window.removeEventListener("blur", onUp);
     document.body.style.userSelect = "";
     isDragging.value = false;
+    rememberPosition(); // 拖完记住位置
   };
 
   // 同时挂 header（捕获路径）与 document（捕获不可用时的兜底）；

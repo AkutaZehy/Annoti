@@ -2,24 +2,39 @@
 // 文档视图：渲染内容、构建文本索引、管理高亮画笔与批注交互。
 // DOM 高亮完全交给 CSS Custom Highlight API，文档树不被批注修改，
 // 因此 Vue 重渲染不会破坏高亮，也无需任何"恢复"逻辑。
+// 2.1：EPUB 异步渲染、区域批注（框选）、文内查找、大纲提取、字号缩放。
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { buildTextIndex, offsetsToRange, type TextIndex } from "@/core/textIndex";
 import { makeAnchor, resolveAnchor } from "@/core/anchor";
 import { descendantIds, buildThreads } from "@/core/threads";
-import { HighlightPainter } from "@/core/highlight";
-import { renderDocument } from "@/formats";
+import { HighlightPainter, FIND_BUCKET, FIND_CURRENT_BUCKET } from "@/core/highlight";
+import { collectMatches } from "@/core/find";
+import {
+  isRegionAnchor,
+  pickRegionTarget,
+  regionBoxRect,
+  regionTargetAvailable,
+} from "@/core/regions";
+import { renderDocument, type RenderedDoc } from "@/formats";
+import { renderEpub } from "@/formats/epub";
 import { inWailsShell, getPlatform } from "@/platform";
-import type { DocMode } from "@/types";
+import { regionMode, setRegionMode } from "@/composables/useViewTools";
+import { useSettings } from "@/composables/useSettings";
+import type { DocMode, OutlineItem } from "@/types";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useDocument } from "@/composables/useDocument";
 import SelectionToolbar from "./SelectionToolbar.vue";
 import StickyNote from "./StickyNote.vue";
+import RegionLayer from "./RegionLayer.vue";
+import FindBar from "./FindBar.vue";
+import type { RegionBox } from "./RegionLayer.vue";
 import Icon from "./ui/Icon.vue";
 
 const props = defineProps<{ content: string; mode: DocMode }>();
 
 const { currentDoc } = useDocument();
+const { settings } = useSettings();
 const { annotations, activeId, create, createReply, update, remove, setActive, markOrphaned } =
   useAnnotations();
 
@@ -30,12 +45,73 @@ const painter = new HighlightPainter();
 /** 每条批注当前解析出的文本流区间（命中检测与定位用） */
 const resolved = new Map<string, { start: number; end: number }>();
 
-/** 渲染层分发：md/txt/html/json/xml/csv → 规范 HTML（已消毒/转义） */
-const renderResult = computed(() =>
-  renderDocument(props.mode, props.content, {
+// ---- EPUB 异步渲染（文本格式走同步 renderDocument） ----
+
+const epubHtml = ref("");
+const epubWarning = ref("");
+const epubToc = ref<OutlineItem[]>([]);
+const epubLoading = ref(false);
+let epubSeq = 0;
+
+const renderResult = computed<RenderedDoc>(() => {
+  if (props.mode === "epub") {
+    return {
+      html: epubHtml.value,
+      warning: epubLoading.value ? "正在载入 EPUB…" : epubWarning.value || undefined,
+      toc: epubToc.value,
+    };
+  }
+  return renderDocument(props.mode, props.content, {
     docPath: currentDoc.value?.path ?? "",
     localres: inWailsShell(),
-  }),
+  });
+});
+
+watch(
+  () => [props.mode, currentDoc.value?.libraryPath] as const,
+  async () => {
+    if (props.mode !== "epub") {
+      epubHtml.value = "";
+      epubWarning.value = "";
+      epubToc.value = [];
+      return;
+    }
+    const lib = currentDoc.value?.libraryPath;
+    const seq = ++epubSeq;
+    if (!lib || !inWailsShell()) {
+      epubHtml.value = "";
+      epubWarning.value = "EPUB 需要在 Annoti 桌面版中打开";
+      return;
+    }
+    epubLoading.value = true;
+    try {
+      const result = await renderEpub({ libraryPath: lib, localres: true });
+      if (seq !== epubSeq) return; // 已切换到别的文档
+      epubHtml.value = result.html;
+      epubWarning.value = result.warning ?? "";
+      epubToc.value = result.toc ?? [];
+    } catch (e) {
+      if (seq !== epubSeq) return;
+      epubHtml.value = "";
+      epubWarning.value = "EPUB 载入失败: " + (e instanceof Error ? e.message : String(e));
+    } finally {
+      if (seq === epubSeq) epubLoading.value = false;
+    }
+  },
+  { immediate: true },
+);
+
+const isEmpty = computed(() =>
+  props.mode === "epub" ? !epubLoading.value && !epubHtml.value : !props.content,
+);
+const emptyText = computed(() =>
+  props.mode === "epub" && !epubWarning.value ? "正在载入 EPUB…" : "文档为空",
+);
+
+/** 长文档渲染虚拟化阈值：超过即按顶层块启用 content-visibility */
+const LARGE_CHARS = 250_000;
+const isLarge = computed(
+  () => (props.mode === "epub" ? epubHtml.value : props.content).length > LARGE_CHARS,
 );
 
 /** 讨论串索引（侧栏与便签共用；childrenOf 供便签显示直接子回复） */
@@ -44,7 +120,7 @@ const threadIndex = computed(() => buildThreads(annotations.value));
 // ---- 渲染与重建 ----
 
 watch(
-  () => [props.content, props.mode],
+  () => [renderResult.value.html, props.mode],
   () => {
     void nextTick(rebuild);
   },
@@ -67,14 +143,24 @@ function rebuild() {
   resolved.clear();
   if (!containerRef.value) return;
   index = buildTextIndex(containerRef.value);
+  rebuildOutline();
+  if (findState.value.open && findState.value.query) runFind();
   repaint();
 }
 
 function repaint() {
-  if (!index) return;
+  if (!index || !containerRef.value) return;
   const entries: { id: string; color?: string | null; ranges: Range[] }[] = [];
   const broken = new Set<string>();
   for (const anno of annotations.value) {
+    if (isRegionAnchor(anno.anchor)) {
+      // 区域批注不进文本高亮，由 RegionLayer 呈现；目标丢失（图片移除/块删改）标失效
+      entries.push({ id: anno.id, color: anno.color, ranges: [] });
+      if (!regionTargetAvailable(index, containerRef.value, anno.anchor)) {
+        broken.add(anno.id);
+      }
+      continue;
+    }
     const pos = resolveAnchor(index, anno.anchor);
     if (!pos) {
       broken.add(anno.id);
@@ -88,6 +174,186 @@ function repaint() {
   }
   markOrphaned(broken);
   painter.sync(entries, activeId.value);
+  syncRegionBoxes();
+}
+
+// ---- 区域批注（框选） ----
+
+const drawBox = ref<{ x: number; y: number; w: number; h: number } | null>(null);
+const regionBoxes = ref<RegionBox[]>([]);
+
+function syncRegionBoxes() {
+  if (!index || !containerRef.value) {
+    regionBoxes.value = [];
+    return;
+  }
+  const boxes: RegionBox[] = [];
+  for (const anno of annotations.value) {
+    if (!isRegionAnchor(anno.anchor)) continue;
+    const rect = regionBoxRect(index, containerRef.value, anno);
+    if (rect) {
+      boxes.push({ id: anno.id, rect, color: anno.color ?? "", active: anno.id === activeId.value });
+    }
+  }
+  regionBoxes.value = boxes;
+}
+
+function onRegionDrawStart(e: MouseEvent) {
+  if (!regionMode.value || e.button !== 0) return;
+  const idx = index;
+  const container = containerRef.value;
+  if (!idx || !container) return;
+  e.preventDefault();
+  const startX = e.clientX;
+  const startY = e.clientY;
+
+  const onMove = (ev: MouseEvent) => {
+    drawBox.value = {
+      x: Math.min(startX, ev.clientX),
+      y: Math.min(startY, ev.clientY),
+      w: Math.abs(ev.clientX - startX),
+      h: Math.abs(ev.clientY - startY),
+    };
+  };
+  const onUp = async () => {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    const rect = drawBox.value;
+    drawBox.value = null;
+    if (!rect || rect.w < 8 || rect.h < 8) return; // 过小视为误触
+
+    const target = pickRegionTarget(
+      idx,
+      new DOMRect(rect.x, rect.y, rect.w, rect.h),
+      container,
+    );
+    setRegionMode(false);
+    const saved = await create(target.anchor, target.quote, "", "");
+    setActive(saved.id);
+    openNote(saved.id, target.rect);
+  };
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
+function onRegionOpen(id: string, rect: DOMRect) {
+  openNote(id, rect);
+}
+
+// ---- 文内查找（Ctrl+F） ----
+
+const findState = ref({ open: false, query: "", matches: [] as number[], current: -1 });
+let findTimer: ReturnType<typeof setTimeout> | null = null;
+
+function openFind() {
+  findState.value.open = true;
+}
+
+function closeFind() {
+  findState.value.open = false;
+  findState.value.matches = [];
+  findState.value.current = -1;
+  painter.setBucket(FIND_BUCKET, []);
+  painter.setBucket(FIND_CURRENT_BUCKET, []);
+}
+
+function onFindQuery(q: string) {
+  findState.value.query = q;
+  if (findTimer) clearTimeout(findTimer);
+  findTimer = setTimeout(runFind, 150);
+}
+
+function runFind() {
+  if (findTimer) {
+    clearTimeout(findTimer);
+    findTimer = null;
+  }
+  if (!index || !findState.value.query.trim()) {
+    findState.value.matches = [];
+    findState.value.current = -1;
+    painter.setBucket(FIND_BUCKET, []);
+    painter.setBucket(FIND_CURRENT_BUCKET, []);
+    return;
+  }
+  const matches = collectMatches(index.text, findState.value.query);
+  findState.value.matches = matches;
+  findState.value.current = matches.length ? 0 : -1;
+  paintFind();
+  if (matches.length) scrollToMatch(0);
+}
+
+function paintFind() {
+  if (!index) return;
+  const { matches, current, query } = findState.value;
+  const len = query.length;
+  painter.setBucket(
+    FIND_BUCKET,
+    matches
+      .map((o) => offsetsToRange(index!, o, o + len))
+      .filter((r): r is Range => r !== null),
+  );
+  painter.setBucket(
+    FIND_CURRENT_BUCKET,
+    current >= 0 && matches[current] !== undefined
+      ? [offsetsToRange(index, matches[current], matches[current] + len)].filter(
+          (r): r is Range => r !== null,
+        )
+      : [],
+  );
+}
+
+function findStep(delta: number) {
+  const { matches } = findState.value;
+  if (!matches.length) return;
+  const next = (findState.value.current + delta + matches.length) % matches.length;
+  findState.value.current = next;
+  paintFind();
+  scrollToMatch(next);
+}
+
+function scrollToMatch(at: number) {
+  if (!index) return;
+  const start = findState.value.matches[at];
+  if (start === undefined) return;
+  const range = offsetsToRange(index, start, start + findState.value.query.length);
+  if (range) centerRange(range);
+}
+
+// ---- 大纲（md/html 标题树；epub 章节） ----
+
+const outline = ref<OutlineItem[]>([]);
+
+function rebuildOutline() {
+  const el = containerRef.value;
+  if (!el) {
+    outline.value = [];
+    return;
+  }
+  if (props.mode === "epub") {
+    outline.value = renderResult.value.toc ?? [];
+    return;
+  }
+  if (props.mode === "txt" || props.mode === "json" || props.mode === "xml" || props.mode === "csv") {
+    outline.value = [];
+    return;
+  }
+  const items: OutlineItem[] = [];
+  let i = 0;
+  for (const h of Array.from(el.querySelectorAll("h1, h2, h3"))) {
+    const label = (h.textContent ?? "").trim().slice(0, 80);
+    if (!label) continue;
+    h.setAttribute("data-outline", String(i));
+    items.push({ level: Number(h.tagName[1]), label, key: String(i) });
+    i++;
+  }
+  outline.value = items;
+}
+
+function locateOutline(item: OutlineItem) {
+  const el = props.mode === "epub"
+    ? containerRef.value?.querySelectorAll("section.epub-chapter")[Number(item.key)]
+    : containerRef.value?.querySelector(`[data-outline="${CSS.escape(item.key)}"]`);
+  if (el) (el as HTMLElement).scrollIntoView({ block: "center" });
 }
 
 // ---- 选区 → 工具条 ----
@@ -102,6 +368,7 @@ function onSelectionChange() {
   if (selTimer) clearTimeout(selTimer);
   selTimer = setTimeout(() => {
     selTimer = null;
+    if (regionMode.value) return;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !index) return;
     const range = sel.getRangeAt(0);
@@ -112,12 +379,21 @@ function onSelectionChange() {
   }, 150);
 }
 
-onMounted(() => document.addEventListener("selectionchange", onSelectionChange));
+onMounted(() => {
+  document.addEventListener("selectionchange", onSelectionChange);
+  if (containerRef.value && typeof ResizeObserver !== "undefined") {
+    const obs = new ResizeObserver(() => syncRegionBoxes());
+    obs.observe(containerRef.value);
+    resizeObs = obs;
+  }
+});
 onBeforeUnmount(() => {
   document.removeEventListener("selectionchange", onSelectionChange);
   if (selTimer) clearTimeout(selTimer);
+  resizeObs?.disconnect();
   painter.destroy();
 });
+let resizeObs: ResizeObserver | null = null;
 
 function lastRectOf(range: Range): DOMRect | null {
   const rects = range.getClientRects();
@@ -230,6 +506,7 @@ function onOpenReply(replyId: string, rect: DOMRect) {
 }
 
 function onDocClick(e: MouseEvent) {
+  if (regionMode.value) return; // 框选模式下点击交给拖拽流程
   // 文档内链接不在应用内导航，交给系统浏览器（html 格式）
   const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
   if (link) {
@@ -304,12 +581,22 @@ function offsetAtPoint(x: number, y: number): number | null {
 
 /**
  * 侧栏点击定位：滚动到批注 → 闪烁 → 在高亮处打开卡片。
- * scrollTop 赋值与 Range 测量都是同步操作，滚动后立刻取到的
- * getBoundingClientRect 即为最终视口位置，无需等待渲染帧。
+ * scrollIntoView 由浏览器处理 content-visibility 屏外内容的强制布局，
+ * 滚动后同步取 getBoundingClientRect 即为最终视口位置。
  */
 function locate(id: string) {
   const anno = annotations.value.find((a) => a.id === id);
   if (!anno) return;
+
+  if (isRegionAnchor(anno.anchor)) {
+    const box = regionBoxes.value.find((b) => b.id === id);
+    if (!box) return; // 失效区域批注：不滚动不开便签
+    scrollRectCenter(box.rect);
+    painter.flash(id);
+    openNote(id, box.rect);
+    setActive(id);
+    return;
+  }
 
   const pos = resolved.get(id);
   if (!index || !pos) return; // 失效批注：不滚动不开便签（侧栏已有 ⚠ 标记）
@@ -325,32 +612,69 @@ function locate(id: string) {
 
 /** 把 Range 的中点滚到滚动容器可视区中部 */
 function centerRange(range: Range) {
+  const el = range.startContainer.parentElement;
+  if (el) {
+    el.scrollIntoView({ block: "center" });
+    return;
+  }
+  scrollRectCenter(range.getBoundingClientRect());
+}
+
+function scrollRectCenter(rect: DOMRect) {
   const scroller = containerRef.value?.closest(".viewer-scroll") as HTMLElement | null;
   if (!scroller) return;
-  const rect = range.getBoundingClientRect();
   const box = scroller.getBoundingClientRect();
   scroller.scrollTop += rect.top + rect.height / 2 - (box.top + box.height / 2);
 }
 
-defineExpose({ locate });
+// ---- 字号缩放（文本流锚点天然抗回流） ----
+
+function zoom(delta: number) {
+  const cur = settings.value.docZoom ?? 1;
+  settings.value.docZoom = Math.round(Math.max(0.8, Math.min(2, cur + delta)) * 10) / 10;
+}
+
+function zoomReset() {
+  settings.value.docZoom = 1;
+}
+
+const zoomStyle = computed(() => ({ "--doc-zoom": String(settings.value.docZoom ?? 1) }));
+
+defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomReset });
 </script>
 
 <template>
-  <div class="viewer-scroll" @click="onDocClick">
+  <div class="viewer-scroll" :style="zoomStyle" @click="onDocClick" @scroll.passive="syncRegionBoxes" @mousedown="onRegionDrawStart">
     <div
       ref="containerRef"
       class="doc-content"
-      :class="{ 'plain-text': mode === 'txt', 'source-doc': mode === 'json' || mode === 'xml' }"
+      :class="{
+        'plain-text': mode === 'txt',
+        'source-doc': mode === 'json' || mode === 'xml',
+        large: isLarge,
+        'region-mode': regionMode,
+        'epub-doc': mode === 'epub',
+      }"
     >
       <!-- eslint-disable-next-line vue/no-v-html — 渲染层输出已消毒/转义 -->
       <div v-html="renderResult.html"></div>
     </div>
 
-    <div v-if="!content" class="viewer-empty">文档为空</div>
+    <div v-if="isEmpty" class="viewer-empty">{{ emptyText }}</div>
     <div v-else-if="renderResult.warning" class="render-warning">
       <Icon name="alert-triangle" :size="13" />
       {{ renderResult.warning }}
     </div>
+
+    <FindBar
+      v-if="findState.open"
+      :matches="findState.matches.length"
+      :current="findState.current"
+      @query="onFindQuery"
+      @next="findStep(1)"
+      @prev="findStep(-1)"
+      @close="closeFind"
+    />
 
     <SelectionToolbar
       v-if="toolbar"
@@ -381,6 +705,9 @@ defineExpose({ locate });
       @focus="bringToFront(card.annotation.id)"
     />
   </div>
+
+  <!-- 区域浮层在滚动容器之外：框是视口坐标，不随内容滚动 -->
+  <RegionLayer :boxes="regionBoxes" :preview="drawBox" @open="onRegionOpen" />
 </template>
 
 <style scoped>
@@ -397,9 +724,21 @@ defineExpose({ locate });
   margin: 0 auto;
   color: var(--doc-text, #1a1a1a);
   line-height: 1.85;
-  font-size: 16px;
+  font-size: calc(16px * var(--doc-zoom, 1));
   cursor: text;
   user-select: text;
+}
+
+.doc-content.region-mode {
+  cursor: crosshair;
+  user-select: none;
+}
+
+/* EPUB：章节块铺满容器宽度，正文排版沿用稿纸体系 */
+.doc-content.epub-doc :deep(section.epub-chapter) {
+  padding-bottom: 2.5em;
+  margin-bottom: 2.5em;
+  border-bottom: 1px solid var(--border-light, #edeae0);
 }
 
 .plain-text {
@@ -411,7 +750,7 @@ defineExpose({ locate });
 /* json/xml 源码视图：等宽 + 更紧凑的行距（字体与着色见 markdown.css） */
 .doc-content.source-doc > div {
   font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--doc-zoom, 1));
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;

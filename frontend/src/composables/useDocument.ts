@@ -2,6 +2,7 @@
 
 import { ref } from "vue";
 import { getPlatform } from "@/platform";
+import { pushRecent } from "@/core/recents";
 import { setCurrentDocId, useAnnotations } from "./useAnnotations";
 import { useSettings } from "./useSettings";
 import type { OpenedDocument } from "@/types";
@@ -17,6 +18,7 @@ export function useDocument() {
     currentDoc.value = doc;
     setCurrentDocId(doc.id);
     settings.value.lastPath = doc.path; // 设置变更会自动防抖落盘
+    settings.value.recents = pushRecent(settings.value.recents, doc.path, doc.name, Date.now());
     await loadFor(doc.id);
   }
 
@@ -37,6 +39,22 @@ export function useDocument() {
     }
   }
 
+  /** 按最近打开记录打开；文件已不存在返回 null（调用方提示） */
+  async function openRecent(path: string): Promise<OpenedDocument | null> {
+    if (opening.value) return null;
+    opening.value = true;
+    try {
+      const doc = await getPlatform().openDocumentPath(path);
+      if (doc) await adopt(doc);
+      return doc;
+    } catch (e) {
+      console.error("打开文档失败:", e);
+      return null;
+    } finally {
+      opening.value = false;
+    }
+  }
+
   /** 启动时恢复上次文档；文件已不存在则静默跳过 */
   async function restoreLast(): Promise<void> {
     const path = settings.value.lastPath;
@@ -49,11 +67,15 @@ export function useDocument() {
     }
   }
 
+  function clearRecents(): void {
+    settings.value.recents = [];
+  }
+
   function closeFile() {
     currentDoc.value = null;
     setCurrentDocId(null);
     clear();
   }
 
-  return { currentDoc, opening, openFile, restoreLast, closeFile };
+  return { currentDoc, opening, adopt, openFile, openRecent, restoreLast, clearRecents, closeFile };
 }

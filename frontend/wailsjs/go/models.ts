@@ -23,6 +23,26 @@ export namespace main {
 
 export namespace models {
 	
+	export class RegionRect {
+	    x: number;
+	    y: number;
+	    w: number;
+	    h: number;
+	    img?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RegionRect(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.x = source["x"];
+	        this.y = source["y"];
+	        this.w = source["w"];
+	        this.h = source["h"];
+	        this.img = source["img"];
+	    }
+	}
 	export class TextAnchor {
 	    type: string;
 	    start: number;
@@ -30,6 +50,7 @@ export namespace models {
 	    exact: string;
 	    prefix: string;
 	    suffix: string;
+	    region?: RegionRect;
 	
 	    static createFrom(source: any = {}) {
 	        return new TextAnchor(source);
@@ -43,7 +64,26 @@ export namespace models {
 	        this.exact = source["exact"];
 	        this.prefix = source["prefix"];
 	        this.suffix = source["suffix"];
+	        this.region = this.convertValues(source["region"], RegionRect);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class Annotation {
 	    id: string;
@@ -105,6 +145,7 @@ export namespace models {
 	    size: number;
 	    changed: boolean;
 	    content: string;
+	    libraryPath?: string;
 	    createdAt: number;
 	    updatedAt: number;
 	
@@ -121,10 +162,12 @@ export namespace models {
 	        this.size = source["size"];
 	        this.changed = source["changed"];
 	        this.content = source["content"];
+	        this.libraryPath = source["libraryPath"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	
 
 }
 

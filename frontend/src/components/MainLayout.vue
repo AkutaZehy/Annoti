@@ -1,23 +1,97 @@
 <script setup lang="ts">
-// 主布局：顶栏 + （文档视图 | 拖拽条 | 侧栏），以及轻量 toast。
+// 主布局：菜单顶栏 + （文档视图 | 拖拽条 | 侧栏[批注/大纲]）+ 全局快捷键 + toast。
+// 2.1：侧栏加大纲页签；拖拽文件打开；全局快捷键（Ctrl+O/F/G/±/0，Esc）。
 
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import TopBar from "./TopBar.vue";
 import DocumentViewer from "./DocumentViewer.vue";
 import AnnotationList from "./AnnotationList.vue";
+import OutlinePanel from "./OutlinePanel.vue";
 import Icon from "./ui/Icon.vue";
 import { useDocument } from "@/composables/useDocument";
 import { useSettings } from "@/composables/useSettings";
+import { useAnnotations } from "@/composables/useAnnotations";
+import { regionMode, setRegionMode, toggleRegionMode } from "@/composables/useViewTools";
+import { getPlatform } from "@/platform";
 
-const { currentDoc, openFile, restoreLast } = useDocument();
+const appVersion = __APP_VERSION__;
+
+const { currentDoc, adopt, openFile, restoreLast } = useDocument();
 const { settings, init } = useSettings();
+const { annotations } = useAnnotations();
 
 const viewerRef = ref<InstanceType<typeof DocumentViewer> | null>(null);
+
+let unlistenDrop: (() => void) | null = null;
 
 onMounted(async () => {
   await init();
   await restoreLast();
+  // 拖拽文件到窗口打开（仅 Wails 壳提供）
+  unlistenDrop =
+    getPlatform().onDroppedDocument?.((doc) => {
+      void adopt(doc).then(() => showToast(`已打开 ${doc.name}`));
+    }) ?? null;
+  window.addEventListener("keydown", onKeydown);
 });
+onBeforeUnmount(() => {
+  unlistenDrop?.();
+  window.removeEventListener("keydown", onKeydown);
+});
+
+// ---- 全局快捷键 ----
+// Ctrl 组合在任何焦点下生效；Esc 仅在非输入焦点时用于退出框选
+// （查找条自处理自己的 Esc）。
+
+function isTypingTarget(t: EventTarget | null): boolean {
+  return (t as HTMLElement | null)?.closest?.("input, textarea, [contenteditable]") != null;
+}
+
+function onKeydown(e: KeyboardEvent) {
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && e.key.toLowerCase() === "o") {
+    e.preventDefault();
+    void openFile();
+    return;
+  }
+  if (!currentDoc.value) return;
+  if (ctrl && e.key.toLowerCase() === "f") {
+    e.preventDefault();
+    viewerRef.value?.openFind();
+  } else if (ctrl && e.key.toLowerCase() === "g") {
+    e.preventDefault();
+    toggleRegionMode();
+  } else if (ctrl && (e.key === "=" || e.key === "+")) {
+    e.preventDefault();
+    viewerRef.value?.zoom(0.1);
+  } else if (ctrl && e.key === "-") {
+    e.preventDefault();
+    viewerRef.value?.zoom(-0.1);
+  } else if (ctrl && e.key === "0") {
+    e.preventDefault();
+    viewerRef.value?.zoomReset();
+  } else if (e.key === "Escape" && !isTypingTarget(e.target) && regionMode.value) {
+    setRegionMode(false);
+  }
+}
+
+// ---- 侧栏（批注 / 大纲 页签） ----
+
+const sidebarVisible = ref(true);
+const sideTab = ref<"notes" | "outline">("notes");
+const outlineItems = computed(() => viewerRef.value?.outline ?? []);
+
+function onLocate(id: string) {
+  viewerRef.value?.locate(id);
+}
+
+function onOutlineLocate(item: { key: string; level: number; label: string }) {
+  viewerRef.value?.locateOutline(item);
+}
+
+const mainStyle = computed(() => ({
+  "--sidebar-width": `${settings.value.sidebarWidth}%`,
+}));
 
 // ---- 侧栏宽度拖拽 ----
 
@@ -53,12 +127,7 @@ function stopResize() {
   document.removeEventListener("mouseup", stopResize);
 }
 
-const sidebarVisible = ref(true);
-const mainStyle = computed(() => ({
-  "--sidebar-width": `${settings.value.sidebarWidth}%`,
-}));
-
-// ---- toast ----
+// ---- toast 与帮助弹窗 ----
 
 const toast = ref<string | null>(null);
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -69,14 +138,27 @@ function showToast(message: string) {
   toastTimer = setTimeout(() => (toast.value = null), 4000);
 }
 
-function onLocate(id: string) {
-  viewerRef.value?.locate(id);
-}
+const showModal = ref<"none" | "about" | "shortcuts">("none");
+
+const SHORTCUTS: [string, string][] = [
+  ["Ctrl+O", "打开文档"],
+  ["Ctrl+F", "在文档中查找（Enter / Shift+Enter 跳转）"],
+  ["Ctrl+G", "框选批注模式（图片 / 文本块）"],
+  ["Ctrl+滚轮", "缩放文档字号"],
+  ["Ctrl+= / Ctrl+- / Ctrl+0", "放大 / 缩小 / 重置缩放"],
+  ["Esc", "退出框选 / 关闭查找"],
+];
 </script>
 
 <template>
   <div class="layout">
-    <TopBar @toast="showToast" />
+    <TopBar
+      @toast="showToast"
+      @find="viewerRef?.openFind()"
+      @about="showModal = 'about'"
+      @shortcuts="showModal = 'shortcuts'"
+      @toggle-sidebar="sidebarVisible = !sidebarVisible"
+    />
 
     <main class="main-area" :style="mainStyle">
       <section class="viewer-pane">
@@ -89,7 +171,7 @@ function onLocate(id: string) {
         <div v-else class="welcome">
           <div class="welcome-card">
             <h1>Read &amp; Note</h1>
-            <p>打开一份 Markdown、纯文本、HTML、JSON、XML 或 CSV 文档，像在稿纸上一样划线、批注、讨论。</p>
+            <p>打开 Markdown、纯文本、HTML、JSON、XML、CSV 或 EPUB 文档，像在稿纸上一样划线、框选、批注、讨论。</p>
             <button class="open-btn" @click="openFile">
               <Icon name="folder-open" :size="15" /> 打开文档
             </button>
@@ -101,18 +183,50 @@ function onLocate(id: string) {
       <div v-if="currentDoc && sidebarVisible" class="resize-handle" @mousedown="startResize"></div>
 
       <aside v-if="currentDoc && sidebarVisible" class="sidebar">
-        <AnnotationList @locate="onLocate" />
+        <div class="side-tabs">
+          <button :class="{ on: sideTab === 'notes' }" @click="sideTab = 'notes'">
+            批注<em v-if="annotations.length">{{ annotations.length }}</em>
+          </button>
+          <button :class="{ on: sideTab === 'outline' }" @click="sideTab = 'outline'">大纲</button>
+        </div>
+        <AnnotationList v-show="sideTab === 'notes'" @locate="onLocate" />
+        <OutlinePanel v-show="sideTab === 'outline'" :items="outlineItems" @locate="onOutlineLocate" />
       </aside>
 
       <button
         v-if="currentDoc"
         class="sidebar-toggle"
-        :title="sidebarVisible ? '隐藏批注列表' : '显示批注列表'"
+        :title="sidebarVisible ? '隐藏侧栏' : '显示侧栏'"
         @click="sidebarVisible = !sidebarVisible"
       >
         {{ sidebarVisible ? "»" : "«" }}
       </button>
     </main>
+
+    <!-- 帮助弹窗 -->
+    <Transition name="fade">
+      <div v-if="showModal !== 'none'" class="modal-mask" @click.self="showModal = 'none'">
+        <div class="modal">
+          <template v-if="showModal === 'about'">
+            <h2>Annoti</h2>
+            <p class="ver">{{ appVersion }}</p>
+            <p>本地文档批注工具——划线、便签、讨论串、区域批注。<br />Markdown / 文本 / HTML / JSON / XML / CSV / EPUB</p>
+          </template>
+          <template v-else>
+            <h2>快捷键</h2>
+            <table class="keys">
+              <tbody>
+                <tr v-for="[k, v] in SHORTCUTS" :key="k">
+                  <td><kbd>{{ k }}</kbd></td>
+                  <td>{{ v }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
+          <button class="close" @click="showModal = 'none'">关闭</button>
+        </div>
+      </div>
+    </Transition>
 
     <Transition name="toast">
       <div v-if="toast" class="toast">{{ toast }}</div>
@@ -147,6 +261,45 @@ function onLocate(id: string) {
   background: var(--sidebar-bg, #f5f5f5);
   border-left: 1px solid var(--sidebar-border, #ddd);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 10px 0;
+  border-bottom: 1px solid var(--sidebar-border, #e2ded2);
+  flex-shrink: 0;
+}
+
+.side-tabs button {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  padding: 7px 14px;
+  cursor: pointer;
+  color: var(--text-secondary, #6f6a5e);
+  border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent;
+}
+
+.side-tabs button.on {
+  color: var(--text-primary, #37352f);
+  font-weight: 600;
+  border-bottom-color: var(--accent, #b45309);
+}
+
+.side-tabs em {
+  font-style: normal;
+  margin-left: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary, #a39d8d);
+}
+
+.side-tabs + * {
+  flex: 1;
+  min-height: 0;
 }
 
 .resize-handle {
@@ -158,7 +311,7 @@ function onLocate(id: string) {
 }
 
 .resize-handle:hover {
-  background: var(--accent, #646cff);
+  background: var(--accent, #b45309);
 }
 
 .sidebar-toggle {
@@ -179,7 +332,7 @@ function onLocate(id: string) {
 }
 
 .sidebar-toggle:hover {
-  color: var(--accent, #646cff);
+  color: var(--accent, #b45309);
 }
 
 .welcome {
@@ -228,6 +381,93 @@ function onLocate(id: string) {
   color: var(--text-tertiary, #999);
 }
 
+/* ---- 帮助弹窗 ---- */
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 26, 18, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+}
+
+.modal {
+  background: var(--bg-primary, #faf9f5);
+  border: 1px solid var(--border, #e2ded2);
+  border-radius: 14px;
+  padding: 26px 30px;
+  min-width: 340px;
+  max-width: 460px;
+  color: var(--text-primary, #37352f);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+}
+
+.modal h2 {
+  font-family: var(--font-serif, Georgia, serif);
+  margin: 0 0 4px;
+}
+
+.ver {
+  color: var(--accent, #b45309);
+  font-size: 13px;
+  margin: 0 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.modal p {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text-secondary, #6f6a5e);
+}
+
+.keys {
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.keys td {
+  padding: 6px 14px 6px 0;
+  font-size: 13px;
+  color: var(--text-secondary, #6f6a5e);
+}
+
+kbd {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11.5px;
+  background: var(--bg-tertiary, #e8e5da);
+  border: 1px solid var(--border-light, #edeae0);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.close {
+  margin-top: 16px;
+  border: 1px solid var(--border, #e2ded2);
+  background: transparent;
+  color: var(--text-primary, #37352f);
+  border-radius: 6px;
+  padding: 6px 18px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--bg-tertiary, #e8e5da);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
@@ -240,7 +480,7 @@ function onLocate(id: string) {
   padding: 10px 18px;
   font-size: 13px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  z-index: 300;
+  z-index: 500;
   max-width: 70vw;
 }
 

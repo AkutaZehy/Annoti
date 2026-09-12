@@ -14,6 +14,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"annoti/internal/encoding"
+	"annoti/internal/epub"
 	"annoti/internal/models"
 	"annoti/internal/pack"
 	"annoti/internal/storage"
@@ -47,6 +48,23 @@ func (a *App) startup(ctx context.Context) {
 			runtime.WindowMaximise(ctx)
 		}
 	}
+
+	// 拖拽文件到窗口：取第一个受支持的文件按常规流程打开，
+	// 经 "doc:dropped" 事件交给前端 adopt（复用打开文档的全部逻辑）。
+	runtime.OnFileDrop(ctx, func(_ int, _ int, paths []string) {
+		for _, p := range paths {
+			if !supportedExts[strings.ToLower(filepath.Ext(p))] {
+				continue
+			}
+			doc, err := a.loadDocument(p)
+			if err != nil {
+				runtime.LogWarningf(ctx, "拖拽打开失败: %v", err)
+				return
+			}
+			runtime.EventsEmit(ctx, "doc:dropped", doc)
+			return
+		}
+	})
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -67,7 +85,8 @@ func (a *App) OpenDocument() (*models.Document, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "打开文档",
 		Filters: []runtime.FileFilter{
-			{DisplayName: "文档 (*.md; *.txt; *.html; *.json; *.xml; *.csv)", Pattern: "*.md;*.txt;*.html;*.htm;*.json;*.xml;*.csv"},
+			{DisplayName: "文档 (*.md; *.txt; *.html; *.json; *.xml; *.csv; *.epub)", Pattern: "*.md;*.markdown;*.txt;*.text;*.html;*.htm;*.json;*.xml;*.csv;*.epub"},
+			{DisplayName: "EPUB 电子书 (*.epub)", Pattern: "*.epub"},
 			{DisplayName: "所有文件 (*.*)", Pattern: "*.*"},
 		},
 	})
@@ -80,20 +99,45 @@ func (a *App) OpenDocument() (*models.Document, error) {
 	return a.loadDocument(path)
 }
 
+// 支持打开的扩展名（拖拽打开时用于甄别）。
+var supportedExts = map[string]bool{
+	".md": true, ".markdown": true, ".txt": true, ".text": true,
+	".html": true, ".htm": true, ".json": true, ".xml": true, ".csv": true,
+	".epub": true,
+}
+
+func isEpub(path string) bool { return strings.EqualFold(filepath.Ext(path), ".epub") }
+
 // loadDocument 读取文件并登记入库。
-// 编码自动检测（UTF-8/UTF-16/GB18030），内容以 UTF-8 交给前端渲染。
+// 文本格式经编码自动检测（UTF-8/UTF-16/GB18030）转成 UTF-8 交给前端；
+// EPUB 是二进制容器：不解码不进 Content，登记后解包到 library 缓存，
+// 前端经 /local/ 抓取章节自行渲染。
 func (a *App) loadDocument(path string) (*models.Document, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("读取文件失败: %w", err)
 	}
-	content := encoding.Decode(raw)
 
-	doc, err := a.store.UpsertDocument(path, []byte(content))
+	content := ""
+	payload := raw
+	if !isEpub(path) {
+		content = encoding.Decode(raw)
+		payload = []byte(content) // 校验和沿用解码后内容，保持与既有记录可比
+	}
+
+	doc, err := a.store.UpsertDocument(path, payload)
 	if err != nil {
 		return nil, fmt.Errorf("登记文档失败: %w", err)
 	}
 	doc.Content = content
+	if isEpub(path) {
+		dir, err := epub.Extract(path)
+		if err != nil {
+			runtime.LogWarningf(a.ctx, "EPUB 解包失败: %v", err)
+		} else {
+			doc.LibraryPath = dir
+		}
+	}
 	return &doc, nil
 }
 
@@ -122,7 +166,9 @@ func (a *App) SaveAnnotation(anno models.Annotation) (models.Annotation, error) 
 		anno.CreatedAt = now
 	}
 	anno.UpdatedAt = now
-	anno.Anchor.Type = models.AnchorTypeText
+	if anno.Anchor.Type == "" {
+		anno.Anchor.Type = models.AnchorTypeText // 区域批注自带 type=region，不覆盖
+	}
 	if err := a.store.SaveAnnotation(&anno); err != nil {
 		return models.Annotation{}, fmt.Errorf("保存批注失败: %w", err)
 	}

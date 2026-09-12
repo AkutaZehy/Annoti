@@ -255,8 +255,13 @@ func (s *Store) DeleteAnnotation(id string) error {
 }
 
 // DedupeKey 生成导入去重键：同作者对同一段文字（位置+内容）的批注视为重复。
+// 区域批注追加框的归一化坐标参与区分，避免同一块上的多个框互相吞并。
 func DedupeKey(a models.Annotation) string {
-	return a.AuthorName + "|" + a.Quote + "|" + strconv.Itoa(a.Anchor.Start) + "|" + strconv.Itoa(a.Anchor.End)
+	key := a.AuthorName + "|" + a.Quote + "|" + strconv.Itoa(a.Anchor.Start) + "|" + strconv.Itoa(a.Anchor.End)
+	if r := a.Anchor.Region; r != nil {
+		key += fmt.Sprintf("|r:%.4f,%.4f,%.4f,%.4f,%s", r.X, r.Y, r.W, r.H, r.Img)
+	}
+	return key
 }
 
 // ExistingDedupeKeys 返回文档现有批注的去重键集合。

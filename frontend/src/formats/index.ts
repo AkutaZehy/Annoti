@@ -1,6 +1,8 @@
 // 文档渲染层：把支持的原始文本变成规范 HTML（随后由锚点引擎消费）。
 // 核心引擎只吃 DOM，新增格式 = 增加一个确定性渲染器；
 // 同一输入必须产出逐字节相同的 HTML——锚点偏移依赖渲染稳定性。
+// 例外：epub 是二进制容器，由 formats/epub.ts 异步组装（经 /local/ 抓取），
+// DocumentViewer 按 mode 分流，最终仍汇入同一条"规范 DOM"契约。
 
 import type { DocMode } from "@/types";
 import { renderMarkdown } from "./markdown";
@@ -23,6 +25,7 @@ const EXT_MODE: Record<string, DocMode> = {
   json: "json",
   xml: "xml",
   csv: "csv",
+  epub: "epub",
 };
 
 /** 路径 → 文档类型；未知扩展名按纯文本兜底 */
@@ -43,6 +46,9 @@ export function renderDocument(mode: DocMode, content: string, ctx: RenderContex
       return renderXml(content);
     case "csv":
       return renderCsv(content);
+    case "epub":
+      // 异步渲染器，DocumentViewer 直接调用 renderEpub；此处防御性回退
+      return { html: "", warning: "正在载入 EPUB…" };
     case "txt":
       return { html: renderText(content) };
   }

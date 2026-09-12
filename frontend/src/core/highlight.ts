@@ -4,6 +4,9 @@
 export const HIGHLIGHT_BASE = "anno-base";
 export const HIGHLIGHT_ACTIVE = "anno-active";
 export const HIGHLIGHT_FLASH = "anno-flash";
+/** 文内查找（Ctrl+F）：全部匹配 / 当前匹配 */
+export const FIND_BUCKET = "find";
+export const FIND_CURRENT_BUCKET = "find-current";
 
 /** 可选高亮色（"" = 默认黄）；与 markdown.css 中 ::highlight(anno-c-*) 桶对应 */
 export const HIGHLIGHT_COLORS = [
@@ -38,6 +41,8 @@ export function allBuckets(): string[] {
     ...HIGHLIGHT_COLORS.filter((c) => c.value).map((c) => `anno-c-${c.value}`),
     HIGHLIGHT_ACTIVE,
     HIGHLIGHT_FLASH,
+    FIND_BUCKET,
+    FIND_CURRENT_BUCKET,
   ];
 }
 
@@ -53,11 +58,20 @@ export class HighlightPainter {
   private flashId: string | null = null;
   private flashTimer: ReturnType<typeof setTimeout> | null = null;
   private buckets = new Map<string, Highlight>();
+  /** 与批注无关的附加桶（文内查找等），sync 不清除 */
+  private extra = new Map<string, Range[]>();
 
   sync(entries: PaintEntry[], activeId: string | null): void {
     this.entries = entries;
     this.activeId = activeId;
     if (!this.entries.some((e) => e.id === this.flashId)) this.flashId = null;
+    this.paint();
+  }
+
+  /** 设置附加桶（空数组 = 清除）；与 sync 互不覆盖 */
+  setBucket(name: string, ranges: Range[]): void {
+    if (ranges.length === 0) this.extra.delete(name);
+    else this.extra.set(name, ranges);
     this.paint();
   }
 
@@ -106,6 +120,12 @@ export class HighlightPainter {
       else desired.set(bucket, [...entry.ranges]);
     }
 
+    // 附加桶先并入，保证下面的清理不会误删仅附加桶持有的实例
+    for (const [name, ranges] of this.extra) {
+      const list = desired.get(name);
+      if (list) list.push(...ranges);
+      else desired.set(name, [...ranges]);
+    }
     // 收掉不再需要的桶
     for (const [name, hl] of [...this.buckets]) {
       if (!desired.has(name)) {

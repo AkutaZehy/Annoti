@@ -162,6 +162,28 @@
   background-color: rgba(239, 68, 68, 0.55);
 }
 
+/* 文内查找（Ctrl+F）：全部匹配淡蓝，当前匹配橙色跳字 */
+::highlight(find) {
+  background-color: rgba(96, 165, 250, 0.28);
+}
+
+::highlight(find-current) {
+  background-color: rgba(249, 115, 22, 0.55);
+}
+
+/* ---- 长文档渲染虚拟化（content-visibility）----
+   DOM 与文本流不变（锚点安全），只跳过屏外子树的布局与绘制。
+   大文档按顶层块、EPUB 按章节启用。 */
+.doc-content.large > div > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
+.epub-chapter {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
 /* ===========================================================================
    V2：json/xml 源码视图着色 + CSV 表格
    ======================================================================== */

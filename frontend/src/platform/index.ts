@@ -24,6 +24,8 @@ export interface Platform {
   openDataDir(): Promise<void>;
   /** 用系统默认浏览器打开外部链接（文档内 <a> 不在应用内导航） */
   openExternal(url: string): Promise<void>;
+  /** 拖拽文件到窗口打开（仅 Wails 壳提供）；返回取消订阅函数 */
+  onDroppedDocument?(cb: (doc: OpenedDocument) => void): () => void;
 }
 
 /** 是否运行在 Wails 壳内（/local/ 本地资源端点只在壳内可用） */

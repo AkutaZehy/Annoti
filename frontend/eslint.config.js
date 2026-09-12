@@ -13,7 +13,14 @@ export default defineConfig([
         files: ["**/*.{js,mjs,cjs,ts,mts,cts,vue}"],
         plugins: { js },
         extends: ["js/recommended"],
-        languageOptions: { globals: { ...globals.browser, ...globals.node } },
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                // vite.config 的 define 注入（见 vite-env.d.ts）
+                __APP_VERSION__: "readonly",
+            },
+        },
     },
     { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
     tseslint.configs.recommended,

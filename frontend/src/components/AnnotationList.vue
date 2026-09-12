@@ -27,7 +27,7 @@ const renderCtx = computed(() => ({
   localres: inWailsShell(),
 }));
 
-// ---- 作者筛选 ----
+// ---- 筛选：作者（V2）/ 关键字 / 高亮颜色 / 已解决（2.1） ----
 const authors = computed(() => {
   const map = new Map<string, string>();
   for (const a of annotations.value) {
@@ -37,18 +37,47 @@ const authors = computed(() => {
   return [...map.entries()].map(([id, name]) => ({ id, name }));
 });
 const authorFilter = ref(""); // "" = 全部
+const search = ref("");
+const colorFilter = ref<string | null>(null); // null = 全部；"" 是默认黄
+const hideResolved = ref(false);
 
 const authorKey = (a: { authorId: string; authorName: string }) => a.authorId || a.authorName;
 
+const anyResolved = computed(() => threadIndex.value.threads.some((t) => t.root.resolved));
+const usedColors = computed(() => {
+  const set = new Set<string>();
+  for (const t of threadIndex.value.threads) set.add(t.root.color ?? "");
+  return [...set];
+});
+
+function threadMatches(t: Thread): boolean {
+  if (
+    authorFilter.value &&
+    authorKey(t.root) !== authorFilter.value &&
+    !t.replies.some((n) => authorKey(n.anno) === authorFilter.value)
+  ) {
+    return false;
+  }
+  if (hideResolved.value && t.root.resolved) return false;
+  if (colorFilter.value !== null && (t.root.color ?? "") !== colorFilter.value) return false;
+  const q = search.value.trim().toLowerCase();
+  if (q) {
+    const haystack = [
+      t.root.body,
+      t.root.quote,
+      t.root.authorName,
+      ...t.replies.map((n) => n.anno.body),
+    ]
+      .join("\n")
+      .toLowerCase();
+    if (!haystack.includes(q)) return false;
+  }
+  return true;
+}
+
 const orderedThreads = computed<Thread[]>(() =>
   threadIndex.value.threads
-    .filter((t) => {
-      if (!authorFilter.value) return true;
-      return (
-        authorKey(t.root) === authorFilter.value ||
-        t.replies.some((n) => authorKey(n.anno) === authorFilter.value)
-      );
-    })
+    .filter(threadMatches)
     .sort(
       (a, b) =>
         Number(a.root.resolved) - Number(b.root.resolved) || a.root.anchor.start - b.root.anchor.start,
@@ -56,9 +85,13 @@ const orderedThreads = computed<Thread[]>(() =>
 );
 
 /** 父链断裂的回复（照常展示，标"回复丢失"，不删除） */
-const orphanReplies = computed(() =>
-  annotations.value.filter((a) => threadIndex.value.orphanIds.has(a.id)),
-);
+const orphanReplies = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  return annotations.value.filter((a) => {
+    if (!threadIndex.value.orphanIds.has(a.id)) return false;
+    return !q || a.body.toLowerCase().includes(q);
+  });
+});
 
 function bodyHtml(body: string): string {
   return renderNoteBody(body, renderCtx.value);
@@ -99,6 +132,34 @@ async function toggleResolve(t: Thread) {
           {{ orphanReplies.length }} 丢失
         </span>
       </span>
+    </div>
+
+    <!-- 关键字 / 颜色 / 已解决筛选（有批注时出现） -->
+    <div v-if="annotations.length > 0" class="filters">
+      <div class="search-row">
+        <Icon name="search" :size="13" />
+        <input v-model="search" placeholder="搜索批注…" spellcheck="false" />
+      </div>
+      <div v-if="usedColors.length > 1 || anyResolved" class="filter-row">
+        <button
+          v-for="c in usedColors"
+          :key="c"
+          class="swatch-chip"
+          :class="{ on: colorFilter === c }"
+          title="按高亮颜色筛选"
+          @click="colorFilter = colorFilter === c ? null : c"
+        >
+          <span class="dot" :style="{ background: swatchOf(c) }"></span>
+        </button>
+        <button
+          v-if="anyResolved"
+          class="chip"
+          :class="{ on: hideResolved }"
+          @click="hideResolved = !hideResolved"
+        >
+          隐藏已解决
+        </button>
+      </div>
     </div>
 
     <!-- 作者筛选（多人讨论时出现） -->
@@ -250,6 +311,63 @@ async function toggleResolve(t: Thread) {
   flex-wrap: wrap;
   gap: 6px;
   padding: 10px 16px 0;
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px 0;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--border-light, #edeae0);
+  border-radius: 6px;
+  color: var(--text-tertiary, #a39d8d);
+  background: var(--bg-primary, #fbfaf6);
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--input-text, #37352f);
+  font-size: 12.5px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-light, #edeae0);
+  background: transparent;
+  border-radius: 999px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.swatch-chip.on {
+  border-color: var(--accent, #b45309);
+  background: rgba(180, 83, 9, 0.06);
+}
+
+.swatch-chip .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(55, 53, 47, 0.15);
 }
 
 .chip {

@@ -11,7 +11,7 @@
       "0409": {
         "identity": {
           "name": "Annoti",
-          "version": "2.0.0.0"
+          "version": "2.1.0.0"
         },
         "description": "Annoti - 本地文档批注工具",
         "minimum-os": "win10",
@@ -40,31 +40,31 @@
         },
         "info": {
           "0409": {
-            "Comments": "Annoti 2.0.0-alpha - V2 multi-format & offline discussion threads (Wails v2 + Go)",
+            "Comments": "Annoti 2.1.0-alpha - V2.1 region annotation, EPUB & reader tooling (Wails v2 + Go)",
             "CompanyName": "Akuta Zehy",
             "FileDescription": "Annoti - Local document annotation tool",
-            "FileVersion": "2.0.0-alpha",
+            "FileVersion": "2.1.0-alpha",
             "InternalName": "annoti",
             "LegalCopyright": "Copyright (C) 2026 Akuta Zehy. MIT License.",
             "LegalTrademarks": "",
             "OriginalFilename": "annoti.exe",
             "PrivateBuild": "",
             "ProductName": "Annoti",
-            "ProductVersion": "2.0.0-alpha",
+            "ProductVersion": "2.1.0-alpha",
             "SpecialBuild": ""
           },
           "2052": {
-            "Comments": "Annoti 2.0.0-alpha —— V2 多格式与离线讨论串（Wails v2 + Go）",
+            "Comments": "Annoti 2.1.0-alpha —— V2.1 区域批注、EPUB 与阅读工具（Wails v2 + Go）",
             "CompanyName": "Akuta Zehy",
             "FileDescription": "Annoti - 本地文档批注工具",
-            "FileVersion": "2.0.0-alpha",
+            "FileVersion": "2.1.0-alpha",
             "InternalName": "annoti",
             "LegalCopyright": "版权所有 (C) 2026 Akuta Zehy。基于 MIT 许可证开源。",
             "LegalTrademarks": "",
             "OriginalFilename": "annoti.exe",
             "PrivateBuild": "",
             "ProductName": "Annoti",
-            "ProductVersion": "2.0.0-alpha",
+            "ProductVersion": "2.1.0-alpha",
             "SpecialBuild": ""
           }
         }
