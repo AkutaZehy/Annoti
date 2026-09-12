@@ -11,8 +11,8 @@
   },
   "info": {
     "productName": "Annoti",
-    "productVersion": "1.0.0",
+    "productVersion": "2.0.0",
     "copyright": "Copyright © 2026 Akuta Zehy",
-    "comments": "Annoti 1.0.0-delta — 本地文档批注工具（V1 核心批注引擎）"
+    "comments": "Annoti 2.0.0-alpha — 本地文档批注工具（V2 多格式 + 离线讨论串）"
   }
 }

@@ -2,7 +2,7 @@
 
 Annoti 是一个本地优先的文档批注工具：打开文档，像在稿纸上一样划线、写批注、贴便签、围绕批注讨论、与朋友交换批注并离线合并。
 
-main 分支正在开发 **V2：多格式 + 离线讨论串**（三阶段规划 V1 → V2 → V3 的第二阶段，基于 Wails v2）。已发布版本见 [Releases](https://github.com/AkutaZehy/Annoti/releases)。架构与设计决策：[doc/v1-architecture.md](doc/v1-architecture.md)（V1 核心）与 [doc/v2-architecture.md](doc/v2-architecture.md)（V2 增量）。
+当前发布 **2.0.0-alpha**，即三阶段规划（V1 → V2 → V3）第二阶段 **V2：多格式 + 离线讨论串** 的第一个测试版本（基于 Wails v2）。架构与设计决策：[doc/v1-architecture.md](doc/v1-architecture.md)（V1 核心）与 [doc/v2-architecture.md](doc/v2-architecture.md)（V2 增量）。
 
 ## 功能
 
@@ -61,8 +61,8 @@ localStorage 存储。
 
 | 版本 | 主题 | 状态 |
 |------|------|------|
-| V1 | 核心批注引擎（md/txt，SQLite，交换格式） | 1.0.0-delta（已发布） |
-| V2 | 多格式（html/json/xml/csv）+ 离线讨论串 + 多作者 | **开发中（main）** |
+| V1 | 核心批注引擎（md/txt，SQLite，交换格式） | 1.0.0-delta |
+| V2 | 多格式（html/json/xml/csv）+ 离线讨论串 + 多作者 | **2.0.0-alpha（当前）** |
 | V3 | PDF / EPUB + 手绘图例 + 长文本性能优化 | 规划中 |
 
 各版本为独立稳定产品，相互不兼容。历史 Tauri 实现存档于
