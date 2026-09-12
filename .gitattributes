@@ -1,0 +1,2 @@
+# 换行纪律：shell 脚本一律 LF——Git Bash 读到 CRLF 会报 '\r': command not found
+*.sh text eol=lf

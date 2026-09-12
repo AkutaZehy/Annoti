@@ -36,3 +36,6 @@ CLAUDE.md
 
 # Wails 构建缓存
 frontend/package.json.md5
+
+# 发布产物（脚本输出在 build/dist/，已被上面的 dist 规则覆盖；根目录历史遗留兜底）
+/SHA256SUMS.txt

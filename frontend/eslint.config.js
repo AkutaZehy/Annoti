@@ -4,7 +4,6 @@ import tseslint from "typescript-eslint";
 import pluginVue from "eslint-plugin-vue";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
-import css from "@eslint/css";
 import { defineConfig } from "eslint/config";
 import prettier from "eslint-config-prettier";
 import vueParser from "vue-eslint-parser";
@@ -48,9 +47,16 @@ export default defineConfig([
     },
     {
         files: ["**/*.json"],
+        ignores: ["**/tsconfig*.json"],
         plugins: { json },
         language: "json/json",
         extends: ["json/recommended"],
+    },
+    // tsconfig 是 JSONC（允许注释），用宽松语言仅做语法解析
+    {
+        files: ["**/tsconfig*.json"],
+        plugins: { json },
+        language: "json/jsonc",
     },
     {
         files: ["**/*.md"],
