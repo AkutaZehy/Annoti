@@ -46,14 +46,14 @@ function onEnter() {
   if (document.querySelector(".menu-panel")) openSelf();
 }
 
-/** 鼠标划过未点击：离开 250ms 后自动收起（回到菜单上取消），不强制点击关闭 */
+/** 鼠标划过未点击：离开 120ms 后自动收起（回到菜单上取消），不强制点击关闭 */
 function onLeave() {
   if (!open.value) return;
   if (leaveTimer) clearTimeout(leaveTimer);
   leaveTimer = setTimeout(() => {
     leaveTimer = null;
     open.value = false;
-  }, 250);
+  }, 120);
 }
 
 function onPeerOpened(e: Event) {

@@ -20,7 +20,7 @@ function onLeave() {
   leaveTimer = setTimeout(() => {
     leaveTimer = null;
     emit("dismiss");
-  }, 350);
+  }, 200);
 }
 
 function onEnter() {
