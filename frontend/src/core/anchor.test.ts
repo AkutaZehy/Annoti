@@ -155,3 +155,73 @@ describe("makeAnchor / resolveAnchor", () => {
     expect(resolveAnchor(index, anchor)).toBeNull();
   });
 });
+
+// ---- 2.1.0-alpha 边界样例（用户实测反馈驱动）----
+
+describe("锚点边界样例", () => {
+  function make(index: { text: string }, start: number, end: number): TextAnchor {
+    return {
+      type: "text",
+      start,
+      end,
+      exact: index.text.slice(start, end),
+      prefix: index.text.slice(Math.max(0, start - CONTEXT_LENGTH), start),
+      suffix: index.text.slice(end, end + CONTEXT_LENGTH),
+    };
+  }
+
+  it("文档开头的批注（start=0，无前文）可以解析", () => {
+    const index = buildTextIndex(root);
+    const anchor = make(index, 0, 4);
+    expect(resolveAnchor(index, anchor)).toEqual({ start: 0, end: 4 });
+  });
+
+  it("文档末尾的批注（无后文）可以解析", () => {
+    const index = buildTextIndex(root);
+    const end = index.text.length;
+    const anchor = make(index, end - 4, end);
+    expect(resolveAnchor(index, anchor)).toEqual({ start: end - 4, end });
+  });
+
+  it("文档被截断后，开头批注仍按 exact 匹配找回", () => {
+    const index = buildTextIndex(root);
+    const anchor = make(index, 0, 4);
+    root.innerHTML = "<p>标题文字后面全是新内容，原文已不在。</p>";
+    const next = buildTextIndex(root);
+    const resolved = resolveAnchor(next, anchor);
+    expect(resolved).not.toBeNull();
+    expect(next.text.slice(resolved!.start, resolved!.end)).toBe("标题文字");
+  });
+
+  it("锚点偏移越界（文档缩短）→ 偏移失效但 exact 兜底找回", () => {
+    const index = buildTextIndex(root);
+    const anchor = make(index, 5, 9); // exact = "一段内容"
+    root.innerHTML = "<p>一段内容在截断后的文档里仍然存在。</p>";
+    const next = buildTextIndex(root);
+    const resolved = resolveAnchor(next, anchor);
+    expect(resolved).not.toBeNull();
+    expect(next.text.slice(resolved!.start, resolved!.end)).toBe(anchor.exact);
+  });
+
+  it("引文与上下文都被删除 → 返回 null（悬空标记，不丢数据）", () => {
+    const index = buildTextIndex(root);
+    const anchor = make(index, 5, 9);
+    root.innerHTML = "<p>完全不同的新内容。</p>";
+    expect(resolveAnchor(buildTextIndex(root), anchor)).toBeNull();
+  });
+
+  it("三段落全部锚定后重建索引，全部无漂移", () => {
+    const index = buildTextIndex(root);
+    const anchors = [
+      make(index, 0, 4),
+      make(index, 4, 8),
+      make(index, index.text.length - 6, index.text.length),
+    ];
+    const next = buildTextIndex(root);
+    for (const a of anchors) {
+      const r = resolveAnchor(next, a);
+      expect(r).not.toBeNull();
+      expect(next.text.slice(r!.start, r!.end)).toBe(a.exact);
+    }
+  });
+});

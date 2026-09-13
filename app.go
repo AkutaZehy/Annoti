@@ -273,10 +273,28 @@ func (a *App) ImportAnnotations(docID string) (*ImportResult, error) {
 	}, nil
 }
 
-// OpenExternal 用系统默认浏览器打开外部链接（文档内 <a> 不在应用内导航）。
+// openableFileExts：file: 链接允许交给系统处理的扩展名（防 ShellExecute
+// 打开任意可执行文件；文档内链指向的通常是另一份文档或图片）。
+var openableFileExts = map[string]bool{
+	".md": true, ".markdown": true, ".txt": true, ".text": true,
+	".html": true, ".htm": true, ".json": true, ".xml": true, ".csv": true,
+	".epub": true,
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true,
+	".svg": true, ".bmp": true, ".avif": true,
+}
+
+// OpenExternal 用系统默认浏览器打开外部链接（文档内 <a> 不在应用内导航——
+// WebView 导航无法回退）。允许 http(s) 与 file:（file: 限白名单扩展名）。
 func (a *App) OpenExternal(url string) error {
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		return fmt.Errorf("仅支持 http(s) 链接: %s", url)
+	switch {
+	case strings.HasPrefix(url, "http://"), strings.HasPrefix(url, "https://"):
+	case strings.HasPrefix(url, "file://"):
+		ext := strings.ToLower(filepath.Ext(url))
+		if !openableFileExts[ext] {
+			return fmt.Errorf("不支持打开该类型的本地文件: %s", ext)
+		}
+	default:
+		return fmt.Errorf("仅支持 http(s)/file 链接: %s", url)
 	}
 	runtime.BrowserOpenURL(a.ctx, url)
 	return nil

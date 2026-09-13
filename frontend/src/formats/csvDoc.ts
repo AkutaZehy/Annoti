@@ -71,6 +71,7 @@ export function renderCsv(content: string): RenderedDoc {
     .map((r) => `<tr>${Array.from({ length: width }, (_, i) => `<td>${escapeHtml(r[i] ?? "")}</td>`).join("")}</tr>`)
     .join("");
   return {
-    html: `<table class="csv-table"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`,
+    // csv-scroll 提供横向滚动（列多时不压扁）；空 div 不产生文本节点，锚点偏移不变
+    html: `<div class="csv-scroll"><table class="csv-table"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`,
   };
 }

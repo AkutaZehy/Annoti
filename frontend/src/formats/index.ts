@@ -39,7 +39,7 @@ export function renderDocument(mode: DocMode, content: string, ctx: RenderContex
     case "md":
       return { html: renderMarkdown(content, ctx.docPath, ctx.localres) };
     case "html":
-      return { html: renderHtml(content, ctx.docPath, ctx.localres) };
+      return renderHtml(content, ctx.docPath, ctx.localres);
     case "json":
       return renderJson(content);
     case "xml":

@@ -22,17 +22,59 @@ export interface MenuItemDef {
 
 const props = defineProps<{ label: string; items: MenuItemDef[] }>();
 
+const MENU_EVENT = "annoti:menu-open";
+let uidCounter = 0;
+
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
+const myId = ++uidCounter;
+let leaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function openSelf() {
+  // 打开自己前先关掉别的菜单（hover 快速切换时避免双开）
+  window.dispatchEvent(new CustomEvent(MENU_EVENT, { detail: myId }));
+  open.value = true;
+}
 
 // 同页多个菜单的协调：有任一菜单展开时，悬停即切换
 function onEnter() {
+  if (leaveTimer) {
+    clearTimeout(leaveTimer);
+    leaveTimer = null;
+  }
   if (open.value) return;
-  if (document.querySelector(".menu-panel")) open.value = true;
+  if (document.querySelector(".menu-panel")) openSelf();
 }
 
+/** 鼠标划过未点击：离开 250ms 后自动收起（回到菜单上取消），不强制点击关闭 */
+function onLeave() {
+  if (!open.value) return;
+  if (leaveTimer) clearTimeout(leaveTimer);
+  leaveTimer = setTimeout(() => {
+    leaveTimer = null;
+    open.value = false;
+  }, 250);
+}
+
+function onPeerOpened(e: Event) {
+  if ((e as CustomEvent).detail !== myId) {
+    if (leaveTimer) {
+      clearTimeout(leaveTimer);
+      leaveTimer = null;
+    }
+    open.value = false;
+  }
+}
+
+onMounted(() => window.addEventListener(MENU_EVENT, onPeerOpened));
+onBeforeUnmount(() => {
+  window.removeEventListener(MENU_EVENT, onPeerOpened);
+  if (leaveTimer) clearTimeout(leaveTimer);
+});
+
 function toggle() {
-  open.value = !open.value;
+  if (open.value) open.value = false;
+  else openSelf();
 }
 
 function run(item: MenuItemDef) {
@@ -63,7 +105,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="menu-root" @mouseenter="onEnter">
+  <div ref="root" class="menu-root" @mouseenter="onEnter" @mouseleave="onLeave">
     <button class="menu-label" :class="{ on: open }" @click.stop="toggle">
       {{ props.label }}
     </button>

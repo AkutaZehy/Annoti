@@ -12,11 +12,14 @@ import type { RenderContext } from "./types";
 export const PURIFY_URI_RE =
   /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data|file|local):|[^a-z]|[a-z+.-]+(?:[^-a-z+.:]|$))/i;
 
-/** 阅读视图消毒：剥掉脚本类标签与嵌入式框架，其余结构保留。 */
+/** 阅读视图消毒：剥掉脚本类标签、嵌入式框架与样式表，其余结构保留。
+    style 标签必须剥：文档 CSS 会泄漏进应用全局（body{} 污染、fixed 覆盖层
+    点击劫持应用按钮），安全边界与脚本同级；内联 style 只影响元素自身，
+    为 EPUB 排版保留。 */
 export function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
     ALLOWED_URI_REGEXP: PURIFY_URI_RE,
-    FORBID_TAGS: ["iframe", "frame", "form", "base", "object", "embed"],
+    FORBID_TAGS: ["iframe", "frame", "form", "base", "object", "embed", "style"],
     FORBID_ATTR: ["srcdoc"],
   });
 }

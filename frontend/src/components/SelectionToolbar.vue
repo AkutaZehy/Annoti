@@ -1,5 +1,7 @@
 <script setup lang="ts">
 // 划选工具条：色点直接以所选颜色高亮；笔形按钮进入批注。
+// 鼠标划过未点击时自动收回（mouseleave 延迟触发，回到条上取消）；
+// 点击条外任意处立即收回。
 import { onBeforeUnmount, onMounted } from "vue";
 import Icon from "./ui/Icon.vue";
 import { HIGHLIGHT_COLORS } from "@/core/highlight";
@@ -11,6 +13,23 @@ const emit = defineEmits<{
   (e: "dismiss"): void;
 }>();
 
+let leaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onLeave() {
+  if (leaveTimer) clearTimeout(leaveTimer);
+  leaveTimer = setTimeout(() => {
+    leaveTimer = null;
+    emit("dismiss");
+  }, 350);
+}
+
+function onEnter() {
+  if (leaveTimer) {
+    clearTimeout(leaveTimer);
+    leaveTimer = null;
+  }
+}
+
 function onGlobalDown(e: MouseEvent) {
   const target = e.target as HTMLElement;
   if (target.closest(".selection-toolbar")) return;
@@ -18,7 +37,10 @@ function onGlobalDown(e: MouseEvent) {
 }
 
 onMounted(() => document.addEventListener("mousedown", onGlobalDown, true));
-onBeforeUnmount(() => document.removeEventListener("mousedown", onGlobalDown, true));
+onBeforeUnmount(() => {
+  document.removeEventListener("mousedown", onGlobalDown, true);
+  if (leaveTimer) clearTimeout(leaveTimer);
+});
 
 function leftFor(x: number): string {
   const width = 210;
@@ -28,7 +50,12 @@ function leftFor(x: number): string {
 </script>
 
 <template>
-  <div class="selection-toolbar" :style="{ left: leftFor(x), top: `${Math.max(8, y - 42)}px` }">
+  <div
+    class="selection-toolbar"
+    :style="{ left: leftFor(x), top: `${Math.max(8, y - 42)}px` }"
+    @mouseenter="onEnter"
+    @mouseleave="onLeave"
+  >
     <div class="swatches" title="选个颜色高亮">
       <button
         v-for="c in HIGHLIGHT_COLORS"

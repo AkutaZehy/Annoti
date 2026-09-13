@@ -15,6 +15,12 @@ import type { RenderContext } from "@/formats";
 import { inWailsShell } from "@/platform";
 import { useDocument } from "@/composables/useDocument";
 import { useSettings } from "@/composables/useSettings";
+import {
+  clampPosition,
+  pickNotePosition,
+  NOTE_MARGIN,
+  NOTE_WIDTH,
+} from "@/core/noteLayout";
 import Icon from "./ui/Icon.vue";
 
 const props = defineProps<{
@@ -106,10 +112,7 @@ function openReply(node: ReplyNode, e: MouseEvent) {
 const posKey = computed(() => `${currentDoc.value?.id ?? "?"}/${props.annotation.id}`);
 
 function clampPos(p: { x: number; y: number }): { x: number; y: number } {
-  return {
-    x: Math.max(8, Math.min(p.x, window.innerWidth - 348)),
-    y: Math.max(8, Math.min(p.y, window.innerHeight - 48)),
-  };
+  return clampPosition(p, { width: window.innerWidth, height: window.innerHeight });
 }
 
 onMounted(() => {
@@ -124,15 +127,12 @@ function rememberPosition() {
   settings.value.notePositions = map;
 }
 
+// 锚点 rect 可能整体在视口外（长文档顶部批注、划线后滚动再点批注）——
+// pickNotePosition 保证结果完整落在视口内，贴最近边缘显示。
 const basePos = computed(() => {
-  const width = 340;
   const height = editing.value ? 300 : 220;
-  const margin = 12;
-  let x = props.rect.right + margin;
-  if (x + width > window.innerWidth - margin) x = Math.max(margin, props.rect.left - width - margin);
-  let y = props.rect.top;
-  if (y + height > window.innerHeight - margin) y = Math.max(margin, props.rect.bottom - height);
-  return { left: `${x}px`, top: `${y}px` };
+  const pos = pickNotePosition(props.rect, { width: window.innerWidth, height: window.innerHeight }, NOTE_WIDTH, height, NOTE_MARGIN);
+  return { left: `${pos.x}px`, top: `${pos.y}px` };
 });
 
 /** 按批注 ID 确定性地微倾，像随手贴上去的纸片（-0.75° ~ +0.75°，7 档） */
@@ -151,16 +151,16 @@ const style = computed(() => {
   return { ...pos, zIndex: String(props.zIndex), "--tilt": `${tilt.value}deg` };
 });
 
-// ---- 拖拽（头部区域，按钮除外） ----
+// ---- 拖拽（顶部整条 + 四边边缘热区，按钮除外） ----
 // Pointer Events + setPointerCapture：捕获后 pointermove/pointerup
-// 一律投递到头部元素，即使指针移出便签甚至移出窗口，松手必定送达。
+// 一律投递到触发元素，即使指针移出便签甚至移出窗口，松手必定送达。
 
 function startDrag(e: PointerEvent) {
   const target = e.target as HTMLElement;
   if (target.closest("button") || e.button !== 0) return; // 仅左键，按钮保持点击
   e.preventDefault();
 
-  const header = e.currentTarget as HTMLElement;
+  const handle = e.currentTarget as HTMLElement;
   const origin = dragged.value ?? {
     x: parseFloat(basePos.value.left),
     y: parseFloat(basePos.value.top),
@@ -173,17 +173,14 @@ function startDrag(e: PointerEvent) {
 
   let done = false;
   const onMove = (ev: PointerEvent) => {
-    dragged.value = {
-      x: Math.max(8, Math.min(ev.clientX - grabX, window.innerWidth - 348)),
-      y: Math.max(8, Math.min(ev.clientY - grabY, window.innerHeight - 48)),
-    };
+    dragged.value = clampPos({ x: ev.clientX - grabX, y: ev.clientY - grabY });
   };
   const onUp = () => {
     if (done) return;
     done = true;
-    header.removeEventListener("pointermove", onMove);
-    header.removeEventListener("pointerup", onUp);
-    header.removeEventListener("pointercancel", onUp);
+    handle.removeEventListener("pointermove", onMove);
+    handle.removeEventListener("pointerup", onUp);
+    handle.removeEventListener("pointercancel", onUp);
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
     window.removeEventListener("blur", onUp);
@@ -192,16 +189,16 @@ function startDrag(e: PointerEvent) {
     rememberPosition(); // 拖完记住位置
   };
 
-  // 同时挂 header（捕获路径）与 document（捕获不可用时的兜底）；
+  // 同时挂 handle（捕获路径）与 document（捕获不可用时的兜底）；
   // 事件冒泡会触发两次，结果幂等，onUp 有 done 防重入
   try {
-    header.setPointerCapture(e.pointerId);
+    handle.setPointerCapture(e.pointerId);
   } catch {
     window.addEventListener("blur", onUp); // 焦点丢失时兜底松手
   }
-  header.addEventListener("pointermove", onMove);
-  header.addEventListener("pointerup", onUp);
-  header.addEventListener("pointercancel", onUp);
+  handle.addEventListener("pointermove", onMove);
+  handle.addEventListener("pointerup", onUp);
+  handle.addEventListener("pointercancel", onUp);
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
 }
@@ -260,6 +257,12 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
         <Icon name="x" :size="14" />
       </button>
     </header>
+
+    <!-- 四边拖动热区：边框区域按住即可移动便签（顶部整条由 header 承担） -->
+    <div class="edge edge-n" @pointerdown="startDrag"></div>
+    <div class="edge edge-s" @pointerdown="startDrag"></div>
+    <div class="edge edge-w" @pointerdown="startDrag"></div>
+    <div class="edge edge-e" @pointerdown="startDrag"></div>
 
     <!-- 回复的便签：父批注上下文 -->
     <div v-if="!isRoot" class="reply-context">
@@ -436,6 +439,50 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 
 .head:active,
 .head.dragging {
+  cursor: grabbing;
+}
+
+/* 四边拖动热区：绝对定位在边框上，7px 触发带宽；n/s 全宽覆盖，e/w 避开
+   已被 header 覆盖的顶角（z 高于正文，正文选字从热区内侧开始不受影响） */
+.edge {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.edge-n {
+  top: -3px;
+  left: 8px;
+  right: 8px;
+  height: 9px;
+  cursor: grab;
+}
+
+.edge-s {
+  bottom: -3px;
+  left: 8px;
+  right: 8px;
+  height: 9px;
+  cursor: grab;
+}
+
+.edge-w {
+  left: -3px;
+  top: 10px;
+  bottom: 10px;
+  width: 9px;
+  cursor: grab;
+}
+
+.edge-e {
+  right: -3px;
+  top: 10px;
+  bottom: 10px;
+  width: 9px;
+  cursor: grab;
+}
+
+.edge:active {
   cursor: grabbing;
 }
 

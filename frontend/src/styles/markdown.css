@@ -238,11 +238,19 @@
   color: #7c7566;
 }
 
+/* CSV：表格按内容自然宽度（不压扁列），列多时在 csv-scroll 内横向滚动。
+   严禁 width:100% + overflow-wrap:anywhere 组合——多列表会被均分压窄成
+   每格十几像素，逐字竖排（2.1.0-alpha 用户实测反馈）。 */
+.csv-scroll {
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
 .csv-table {
   border-collapse: collapse;
-  margin: 1em 0;
   font-size: 13.5px;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
 }
 
 .csv-table th,
@@ -251,9 +259,12 @@
   padding: 6px 10px;
   text-align: left;
   vertical-align: top;
-  max-width: 320px;
-  overflow-wrap: anywhere;
+  max-width: 480px;
+  /* 单元格按空格/标点正常断行；列有 min-width 兜底，不逐字断 */
+  min-width: 4.5em;
   white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .csv-table th {

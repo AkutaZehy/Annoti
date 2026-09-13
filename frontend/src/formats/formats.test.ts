@@ -45,27 +45,34 @@ describe("md/txt", () => {
 });
 
 describe("html", () => {
-  it("剥掉脚本与框架，保留正文结构", () => {
+  it("剥掉脚本与框架，保留正文结构，并给出脚本告警", () => {
     const r = renderHtml(
       "<body><h1>T</h1><script>alert(1)</script><iframe src='x'></iframe><p>正文</p></body>",
       "C:\\x\\a.html",
       false,
     );
-    expect(r).not.toContain("script");
-    expect(r).not.toContain("iframe");
-    expect(r).toContain("<h1>T</h1>");
-    expect(r).toContain("<p>正文</p>");
+    expect(r.html).not.toContain("script");
+    expect(r.html).not.toContain("iframe");
+    expect(r.html).toContain("<h1>T</h1>");
+    expect(r.html).toContain("<p>正文</p>");
+    expect(r.warning).toContain("脚本");
+  });
+
+  it("style 标签剥除（防文档 CSS 泄漏进应用 UI）并告警", () => {
+    const r = renderHtml("<body><style>p{color:red}</style><p>正文</p></body>", "C:\\x\\a.html", false);
+    expect(r.html).not.toContain("<style");
+    expect(r.warning).toContain("样式");
   });
 
   it("本地图片改写为 /local/ 端点", () => {
     const r = renderHtml('<img src="pic.png"><img src="https://e.com/x.png">', "C:\\x\\a.html", true);
-    expect(r).toContain("/local/");
-    expect(r).toContain("https://e.com/x.png");
+    expect(r.html).toContain("/local/");
+    expect(r.html).toContain("https://e.com/x.png");
   });
 
   it("渲染确定性与文本流稳定", () => {
     const src = "<div><p>段落一</p><p>段落二</p></div>";
-    expect(indexOf(renderHtml(src, "", false)).text).toBe("段落一段落二");
+    expect(indexOf(renderHtml(src, "", false).html).text).toBe("段落一段落二");
   });
 });
 

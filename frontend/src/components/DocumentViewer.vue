@@ -370,9 +370,17 @@ function onSelectionChange() {
     selTimer = null;
     if (regionMode.value) return;
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !index) return;
+    // 选区塌缩（点击别处/Esc 清除）→ 工具条失去存在意义，立即收回
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      if (toolbar.value) dismissToolbar();
+      return;
+    }
+    if (!index) return;
     const range = sel.getRangeAt(0);
-    if (!containerRef.value?.contains(range.commonAncestorContainer)) return;
+    if (!containerRef.value?.contains(range.commonAncestorContainer)) {
+      if (toolbar.value) dismissToolbar();
+      return;
+    }
     pendingRange = range.cloneRange();
     const rect = lastRectOf(range);
     if (rect) toolbar.value = { x: rect.right, y: rect.top };
@@ -381,6 +389,7 @@ function onSelectionChange() {
 
 onMounted(() => {
   document.addEventListener("selectionchange", onSelectionChange);
+  scrollerEl()?.addEventListener("scroll", onScrollDismiss, { passive: true });
   if (containerRef.value && typeof ResizeObserver !== "undefined") {
     const obs = new ResizeObserver(() => syncRegionBoxes());
     obs.observe(containerRef.value);
@@ -389,10 +398,20 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   document.removeEventListener("selectionchange", onSelectionChange);
+  scrollerEl()?.removeEventListener("scroll", onScrollDismiss);
   if (selTimer) clearTimeout(selTimer);
   resizeObs?.disconnect();
   painter.destroy();
 });
+
+/** 滚动时工具条位置失效：立即收回（便签是显式语义，保留不动） */
+function onScrollDismiss() {
+  if (toolbar.value) dismissToolbar();
+}
+
+function scrollerEl(): HTMLElement | null {
+  return containerRef.value?.closest(".viewer-scroll") as HTMLElement | null;
+}
 let resizeObs: ResizeObserver | null = null;
 
 function lastRectOf(range: Range): DOMRect | null {
@@ -408,6 +427,8 @@ function dismissToolbar() {
 async function onToolbarAction(withNote: boolean, color?: string) {
   if (!index || !pendingRange) return;
   const anchor = makeAnchor(index, pendingRange);
+  // 关键：此时重新测量选区的当前位置——划线后滚动过文档的话，
+  // 旧 rect 已失效（视口坐标），便签会开到看不见的地方
   const rect = lastRectOf(pendingRange);
   const quote = pendingRange.toString();
   window.getSelection()?.removeAllRanges();
@@ -418,7 +439,8 @@ async function onToolbarAction(withNote: boolean, color?: string) {
   setActive(saved.id);
   const pos = resolveAnchor(index!, saved.anchor);
   if (pos) resolved.set(saved.id, pos);
-  openNote(saved.id, rect ?? containerRef.value!.getBoundingClientRect(), withNote);
+  const fallback = scrollerEl()?.getBoundingClientRect() ?? new DOMRect(80, 80, 0, 0);
+  openNote(saved.id, rect ?? fallback, withNote);
 }
 
 // ---- 便签层：真正的便签语义 ----
@@ -507,14 +529,25 @@ function onOpenReply(replyId: string, rect: DOMRect) {
 
 function onDocClick(e: MouseEvent) {
   if (regionMode.value) return; // 框选模式下点击交给拖拽流程
-  // 文档内链接不在应用内导航，交给系统浏览器（html 格式）
+  // 文档内链接：#锚点应用内滚动（无导航，可随时回继续阅读）；
+  // http(s) 交给系统浏览器；其余（相对路径/file:）交系统浏览器处理
+  // ——绝不允许 WebView 应用内导航（无法回退，2.1.0-alpha 用户反馈）。
   const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
   if (link) {
     e.preventDefault();
+    e.stopPropagation();
     const href = link.getAttribute("href") ?? "";
-    if (href) {
-      getPlatform().openExternal(href).catch((err) => console.error("打开外部链接失败:", err));
+    if (!href) return;
+    if (href.startsWith("#")) {
+      const target = containerRef.value?.querySelector(
+        `#${CSS.escape(decodeURIComponent(href.slice(1)))}, [id="${CSS.escape(decodeURIComponent(href.slice(1)))}"], a[name="${CSS.escape(decodeURIComponent(href.slice(1)))}"]`,
+      );
+      if (target) (target as HTMLElement).scrollIntoView({ block: "center" });
+      return;
     }
+    getPlatform().openExternal(toOpenableUrl(href)).catch(() => {
+      // 非法链接静默失败即可（Go 侧会再校验一层）
+    });
     return;
   }
   const sel = window.getSelection();
@@ -538,6 +571,29 @@ function onDocClick(e: MouseEvent) {
 
 function pointRect(x: number, y: number): DOMRect {
   return new DOMRect(x, y, 0, 0);
+}
+
+/**
+ * 文档链接 → 可交给系统浏览器的 URL。
+ * http(s)/file 直接放行；相对路径相对当前文档目录解析为 file:/// 绝对 URL
+ * （Go 侧白名单扩展名兜底），解析失败返回原值由后端拒绝。
+ */
+function toOpenableUrl(href: string): string {
+  if (/^(?:https?|file|mailto|tel):/i.test(href)) return href;
+  const docPath = currentDoc.value?.path ?? "";
+  if (!docPath || /^[a-z][a-z0-9+.-]*:/i.test(href)) return href;
+  try {
+    const baseDir = docPath.replace(/[\\/][^\\/]*$/, "");
+    const segments = baseDir.split(/[\\/]/).filter(Boolean);
+    for (const seg of decodeURIComponent(href).split(/[\\/]/)) {
+      if (!seg || seg === ".") continue;
+      if (seg === "..") segments.pop();
+      else segments.push(seg);
+    }
+    return "file:///" + segments.map(encodeURIComponent).join("/");
+  } catch {
+    return href;
+  }
 }
 
 /** 视口坐标 → 文本流偏移（命中检测） */
@@ -747,13 +803,13 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
   font-family: "Source Han Sans", "Noto Sans CJK SC", system-ui, sans-serif;
 }
 
-/* json/xml 源码视图：等宽 + 更紧凑的行距（字体与着色见 markdown.css） */
+/* json/xml 源码视图：等宽 + 横向滚动（代码语义，长行不折行不逐字断） */
 .doc-content.source-doc > div {
   font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
   font-size: calc(13.5px * var(--doc-zoom, 1));
   line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .render-warning {
