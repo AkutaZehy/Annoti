@@ -144,3 +144,23 @@ V2 在 V1 的 Core / Platform / UI 三层之上做加法，不推翻任何既有
 - 为标签页多开（V2.2）留的路：查找状态、区域框选等视图态都封装在
   DocumentViewer 组件内，全局模块态只有批注数据与文档单例（与 2.0 一致），
   多开时按组件实例隔离即可。
+
+## 8. 2.2.0-alpha 增量：文本格式大扩展（照排渲染器家族）
+
+全部遵循同一不变量：**原文照排，渲染后文本流与原始内容逐字符一致**
+（span 只包裹不引入文本），锚点/讨论串/合并零改动。
+
+- **kvDoc**（yaml/yml/toml/ini/cfg/conf/config/properties/env）：行级
+  键值对着色——键、值（字符串/数字/布尔）、注释、节头、YAML 锚点引用、
+  env 的 export 前缀。刻意不走 parse→dump：YAML 注释会在重排中丢失，
+  而注释恰是批注热点。
+- **markupDoc**（rst/adoc/asciidoc/org/tex/latex）：标题、指令行、块
+  属性、TODO 状态、LaTeX 命令/数学定界符的行级着色。真实渲染需要各自
+  的解析引擎，照排对"批注源文件"场景已够用。
+- **miscDoc**：diff/patch（增行绿/删行红/hunk 头）、log（时间戳 +
+  ERROR/WARN/INFO/DEBUG 级别着色）、jsonl/ndjson（逐行 JSON 着色，
+  非法行原样照排并计数告警）。
+- **tsv**：复用 CSV 表格渲染但强制制表符分隔——TSV 字段内逗号常见，
+  嗅探会选错分隔符。
+- 打开对话框、拖拽扩展名白名单、README 清单三处同步；等宽照排视图
+  （source-doc 类）覆盖全部新格式；这些格式不产大纲。

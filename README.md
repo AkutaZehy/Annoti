@@ -65,7 +65,8 @@ localStorage 存储。
 |------|------|------|
 | V1 | 核心批注引擎（md/txt，SQLite，交换格式） | 1.0.0-delta |
 | V2 | 多格式（html/json/xml/csv）+ 离线讨论串 + 多作者 | 2.0.0-alpha |
-| V2.1 | 区域批注（框选）+ EPUB + 阅读工具（查找/缩放/大纲/菜单） | **2.1.2-alpha（当前，本地测试）** |
+| V2.1 | 区域批注（框选）+ EPUB + 阅读工具（查找/缩放/大纲/菜单） | 2.1.2-alpha |
+| V2.2 | 文本格式大扩展：配置家族（yaml/toml/ini/env）、标记语言（rst/adoc/org/tex）、diff/log/jsonl/tsv 照排渲染 | **2.2.0-alpha（当前）** |
 | V3 | PDF + 手绘图例 + 长文本深度优化 | 规划中 |
 
 各版本为独立稳定产品，相互不兼容。历史 Tauri 实现存档于

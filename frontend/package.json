@@ -1,7 +1,7 @@
 {
   "name": "annoti-frontend",
   "private": true,
-  "version": "2.1.2-alpha",
+  "version": "2.2.0-alpha",
   "type": "module",
   "scripts": {
     "dev": "vite",
