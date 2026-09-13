@@ -108,6 +108,31 @@ const emptyText = computed(() =>
   props.mode === "epub" && !epubWarning.value ? "正在载入 EPUB…" : "文档为空",
 );
 
+// ---- 脚本禁用弹窗（显式告知一次，不重复打扰）----
+// 含 <script> 的文档：交互功能在 Annoti 中不可用（脚本一律不执行，
+// Wails 壳内页面 JS 可触达 Go 绑定，执行文档脚本是任意代码执行面）。
+const scriptModalShownFor = new Set<string>();
+const showScriptModal = ref(false);
+
+watch(
+  () => [renderResult.value.warning, currentDoc.value?.path] as const,
+  ([warning, path]) => {
+    if (warning?.includes("脚本") && path && !scriptModalShownFor.has(path)) {
+      scriptModalShownFor.add(path);
+      showScriptModal.value = true;
+    }
+  },
+  { immediate: true },
+);
+
+/** 脚本类告警用顶部横幅（比底部条更显眼），样式类告警保持底部条 */
+const topWarning = computed(() =>
+  renderResult.value.warning?.includes("脚本") ? renderResult.value.warning : undefined,
+);
+const bottomWarning = computed(() =>
+  renderResult.value.warning?.includes("脚本") ? undefined : renderResult.value.warning,
+);
+
 /** 长文档渲染虚拟化阈值：超过即按顶层块启用 content-visibility */
 const LARGE_CHARS = 250_000;
 const isLarge = computed(
@@ -701,6 +726,13 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
 
 <template>
   <div class="viewer-scroll" :style="zoomStyle" @click="onDocClick" @scroll.passive="syncRegionBoxes" @mousedown="onRegionDrawStart">
+    <!-- 脚本禁用横幅：文档内容之前，常驻视口内容顶部 -->
+    <div v-if="!isEmpty && topWarning" class="script-banner">
+      <Icon name="alert-triangle" :size="14" />
+      <span>{{ topWarning }}</span>
+      <button class="banner-detail" @click="showScriptModal = true">为什么？</button>
+    </div>
+
     <div
       ref="containerRef"
       class="doc-content"
@@ -717,10 +749,31 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
     </div>
 
     <div v-if="isEmpty" class="viewer-empty">{{ emptyText }}</div>
-    <div v-else-if="renderResult.warning" class="render-warning">
-      <Icon name="alert-triangle" :size="13" />
-      {{ renderResult.warning }}
-    </div>
+    <template v-else>
+      <div v-if="bottomWarning" class="render-warning">
+        <Icon name="alert-triangle" :size="13" />
+        {{ bottomWarning }}
+      </div>
+    </template>
+
+    <!-- 脚本禁用说明弹窗 -->
+    <Transition name="fade">
+      <div v-if="showScriptModal" class="modal-mask" @click.self="showScriptModal = false">
+        <div class="modal-card">
+          <h3>
+            <Icon name="alert-triangle" :size="16" />
+            文档包含 JavaScript，脚本已禁用
+          </h3>
+          <p>
+            这份文档依赖脚本提供交互功能（按钮、计算器、下拉联动等）。Annoti
+            是批注工具而非浏览器：在应用内执行文档脚本意味着允许文档代码访问本机文件与批注数据，因此脚本
+            <b>一律不执行</b>。
+          </p>
+          <p>你可以正常阅读、划选、批注这份文档的文本内容；需要完整交互请用系统浏览器打开原文件。</p>
+          <button class="modal-ok" @click="showScriptModal = false">我知道了</button>
+        </div>
+      </div>
+    </Transition>
 
     <FindBar
       v-if="findState.open"
@@ -825,6 +878,110 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
   color: #b45309;
   background: rgba(180, 83, 9, 0.08);
   border-top: 1px solid rgba(180, 83, 9, 0.25);
+}
+
+/* 脚本禁用：顶部常驻横幅（文档内容上方） */
+.script-banner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto;
+  max-width: 880px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #92400e;
+  background: rgba(251, 191, 36, 0.16);
+  border-bottom: 1px solid rgba(180, 83, 9, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.dark-theme .script-banner {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.banner-detail {
+  margin-left: auto;
+  border: 1px solid rgba(180, 83, 9, 0.4);
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.banner-detail:hover {
+  background: rgba(180, 83, 9, 0.12);
+}
+
+/* 脚本说明弹窗 */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 26, 18, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 420;
+}
+
+.modal-card {
+  background: var(--bg-primary, #faf9f5);
+  border: 1px solid var(--border, #e2ded2);
+  border-radius: 14px;
+  padding: 22px 26px;
+  max-width: 440px;
+  margin: 20px;
+  color: var(--text-primary, #37352f);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+}
+
+.modal-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 15.5px;
+  color: #92400e;
+}
+
+.modal-card p {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-secondary, #6f6a5e);
+  margin: 0 0 8px;
+}
+
+.modal-ok {
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--btn-primary-bg, #37352f);
+  color: var(--btn-primary-text, #faf9f5);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 22px;
+  cursor: pointer;
+}
+
+.modal-ok:hover {
+  opacity: 0.88;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .viewer-empty {

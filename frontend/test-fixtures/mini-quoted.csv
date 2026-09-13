@@ -1,0 +1,3 @@
+model,type,eval_set,n_images,target_bpp,bpp,psnr,ssim,ms_ssim,lpips,dists,mse,niqe,fid,kid_mean,kid_std,corr_lcn_mean,corr_lcn_std,year,cls,source,src,note
+raf,local,tecnick100,100,N/A (stage1),0.098819,26.35,0.7780,0.9205,0.1481,0.0469,0.003023,4.0866,12.6648,-0.007164,0.003630,0.31687,0.11728,-,-,-,results1.csv,-
+qb_fixed_cor_p,local,tecnick100,100,-,-,-,-,-,-,-,-,-,-,-,-,0.08725,0.03853,-,-,-,results7.csv,"corr only; same 7 rate points as qb_fixed_cor (results2), not merged"

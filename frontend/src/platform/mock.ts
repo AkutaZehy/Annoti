@@ -27,7 +27,7 @@ const anchor = makeAnchor(index, range);
 
 实际数据保存在浏览器 localStorage 中；安装版 Annoti 使用本地 SQLite 数据库。
 
-[跳转到文档开头](#示例文档) · [外部链接](https://example.com/annoti) · [相对链接](./ companion.md)
+[跳转到文档开头](#示例文档) · [外部链接](https://example.com/annoti) · [相对链接](./companion.md)
 
 ${Array.from(
   { length: 30 },
@@ -116,6 +116,31 @@ function currentSample(): { name: string; content: string } {
   }
 }
 
+/** ?fixture=<文件名>：从 /fixtures/ 加载真实文件联调（dev 专用，不入仓） */
+async function loadFixture(): Promise<OpenedDocument | null> {
+  const name = new URLSearchParams(window.location.search).get("fixture");
+  if (!name || !/^[\w.-]+$/.test(name)) return null;
+  try {
+    const res = await fetch(`/fixtures/${name}`);
+    if (!res.ok) return null;
+    const content = await res.text();
+    return {
+      id: "mock-fixture-" + name,
+      path: "C:\\fixtures\\" + name,
+      name,
+      checksum: "mock-fixture",
+      size: content.length,
+      changed: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      content,
+      mode: docModeOf(name),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function loadAnnotationsFromStore(): Annotation[] {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -151,11 +176,11 @@ function mockDoc(): OpenedDocument {
 
 export const mockPlatform: Platform = {
   async openDocument(): Promise<OpenedDocument | null> {
-    return mockDoc();
+    return (await loadFixture()) ?? mockDoc();
   },
 
   async openDocumentPath(): Promise<OpenedDocument | null> {
-    return mockDoc();
+    return (await loadFixture()) ?? mockDoc();
   },
 
   async loadAnnotations(docId: string) {

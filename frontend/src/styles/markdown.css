@@ -238,12 +238,61 @@
   color: #7c7566;
 }
 
-/* CSV：表格按内容自然宽度（不压扁列），列多时在 csv-scroll 内横向滚动。
+/* CSV：表格按内容自然宽度（不压扁列）。容器双轴滚动且限高——
+   横向滚动条常驻在视口内（不然在几百行表格的最底，等于不存在），
+   表头 sticky 也随容器垂直滚动真正固定。
    严禁 width:100% + overflow-wrap:anywhere 组合——多列表会被均分压窄成
    每格十几像素，逐字竖排（2.1.0-alpha 用户实测反馈）。 */
 .csv-scroll {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 170px);
   margin: 1em 0;
+  border-radius: 8px;
+}
+
+/* 系统默认是覆盖式滚动条（不滚动不可见），滚动区显式常驻滚动条；
+   源码视图同理（横向）。 */
+.csv-scroll::-webkit-scrollbar,
+.doc-content.source-doc > div::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.csv-scroll::-webkit-scrollbar-track,
+.doc-content.source-doc > div::-webkit-scrollbar-track {
+  background: var(--bg-secondary, #f5f2e9);
+  border-radius: 6px;
+}
+
+.csv-scroll::-webkit-scrollbar-thumb,
+.doc-content.source-doc > div::-webkit-scrollbar-thumb {
+  background: rgba(55, 53, 47, 0.28);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.csv-scroll::-webkit-scrollbar-thumb:hover,
+.doc-content.source-doc > div::-webkit-scrollbar-thumb:hover {
+  background: rgba(55, 53, 47, 0.45);
+  background-clip: padding-box;
+}
+
+.dark-theme .csv-scroll::-webkit-scrollbar-track,
+.dark-theme .doc-content.source-doc > div::-webkit-scrollbar-track {
+  background: var(--bg-secondary, #2d2a23);
+}
+
+.dark-theme .csv-scroll::-webkit-scrollbar-thumb,
+.dark-theme .doc-content.source-doc > div::-webkit-scrollbar-thumb {
+  background: rgba(233, 229, 217, 0.28);
+  background-clip: padding-box;
+}
+
+.dark-theme .csv-scroll::-webkit-scrollbar-thumb:hover,
+.dark-theme .doc-content.source-doc > div::-webkit-scrollbar-thumb:hover {
+  background: rgba(233, 229, 217, 0.45);
+  background-clip: padding-box;
 }
 
 .csv-table {
