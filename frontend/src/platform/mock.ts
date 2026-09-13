@@ -142,7 +142,10 @@ async function loadFixture(): Promise<OpenedDocument | null> {
 }
 
 const BROWSER_DROPPABLE = new Set([
-  ".md", ".markdown", ".txt", ".text", ".html", ".htm", ".json", ".xml", ".csv",
+  ".md", ".markdown", ".txt", ".text", ".html", ".htm", ".json", ".xml", ".csv", ".tsv",
+  ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".config", ".properties", ".env",
+  ".rst", ".adoc", ".asciidoc", ".org", ".tex", ".latex",
+  ".diff", ".patch", ".log", ".jsonl", ".ndjson",
 ]);
 
 /** 浏览器版拖拽：File 无路径，直接读文本内容构造文档（仅 pnpm dev 联调用） */

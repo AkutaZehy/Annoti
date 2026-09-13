@@ -62,6 +62,15 @@ export function parseCsv(content: string, delimiter: string): string[][] {
 export function renderCsv(content: string): RenderedDoc {
   const delimiter = sniffDelimiter(content);
   const rows = parseCsv(content, delimiter);
+  return finishCsv(rows);
+}
+
+/** TSV：制表符分隔，不做嗅探（字段内逗号很常见，嗅探会选错）。 */
+export function renderTsv(content: string): RenderedDoc {
+  return finishCsv(parseCsv(content, "\t"));
+}
+
+function finishCsv(rows: string[][]): RenderedDoc {
   if (rows.length === 0) return { html: "", warning: "CSV 为空" };
 
   const width = Math.max(...rows.map((r) => r.length));

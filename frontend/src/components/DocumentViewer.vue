@@ -101,6 +101,9 @@ watch(
   { immediate: true },
 );
 
+/** 等宽照排视图（pre + 横向滚动）的文档类型 */
+const SOURCE_MODES: readonly DocMode[] = ["json", "xml", "kv", "markup", "diff", "log", "jsonl"];
+
 const isEmpty = computed(() =>
   props.mode === "epub" ? !epubLoading.value && !epubHtml.value : !props.content,
 );
@@ -358,7 +361,8 @@ function rebuildOutline() {
     outline.value = renderResult.value.toc ?? [];
     return;
   }
-  if (props.mode === "txt" || props.mode === "json" || props.mode === "xml" || props.mode === "csv") {
+  // 照排/纯文本/表格类文档没有标题大纲
+  if (!["md", "html", "epub"].includes(props.mode)) {
     outline.value = [];
     return;
   }
@@ -750,7 +754,7 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
       class="doc-content"
       :class="{
         'plain-text': mode === 'txt',
-        'source-doc': mode === 'json' || mode === 'xml',
+        'source-doc': SOURCE_MODES.includes(mode),
         large: isLarge,
         'region-mode': regionMode,
         'epub-doc': mode === 'epub',

@@ -22,7 +22,10 @@ import { models } from "../../wailsjs/go/models";
 /** 拖拽接受的扩展名（与 Go 对话框过滤器一致；路径过滤在前端做） */
 const DROPPABLE_EXTS = new Set([
   ".md", ".markdown", ".txt", ".text",
-  ".html", ".htm", ".json", ".xml", ".csv", ".epub",
+  ".html", ".htm", ".json", ".xml", ".csv", ".tsv", ".epub",
+  ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".config", ".properties", ".env",
+  ".rst", ".adoc", ".asciidoc", ".org", ".tex", ".latex",
+  ".diff", ".patch", ".log", ".jsonl", ".ndjson",
 ]);
 
 /** 生成的文档模型 → 应用层对象 */

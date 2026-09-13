@@ -56,8 +56,22 @@ export interface OpenedDocument extends DocInfo {
   libraryPath?: string;
 }
 
-/** V2.1 支持的文档类型（渲染器按此分发，见 formats/；epub 走异步渲染器） */
-export type DocMode = "md" | "txt" | "html" | "json" | "xml" | "csv" | "epub";
+/** V2.1 支持的文档类型（渲染器按此分发，见 formats/）。
+    照排组（kv/markup/diff/log/jsonl/tsv）渲染后文本流 = 原始内容。 */
+export type DocMode =
+  | "md"
+  | "txt"
+  | "html"
+  | "json"
+  | "xml"
+  | "csv"
+  | "tsv"
+  | "epub"
+  | "kv" // yaml / toml / ini / properties / env
+  | "markup" // rst / adoc / org / tex
+  | "diff"
+  | "log"
+  | "jsonl"; // jsonl / ndjson
 
 export interface ImportResult {
   imported: number;

@@ -6,7 +6,7 @@ Annoti 是一个本地优先的文档批注工具：打开文档，像在稿纸�
 
 ## 功能
 
-- **多格式打开**：`.md` / `.txt` / `.html` / `.json` / `.xml` / `.csv` / `.epub`——统一的渲染层输出规范 DOM，锚点引擎对格式无感；JSON 缩进美化、XML/JSON 语法高亮、CSV 渲染为表格；EPUB 按 spine 顺序逐章渲染（解析到本地缓存，章节目录进大纲）
+- **多格式打开**：`.md` / `.txt` / `.html` / `.json` / `.xml` / `.csv` / `.tsv` / `.epub`，配置家族 `.yaml` / `.yml` / `.toml` / `.ini` / `.cfg` / `.conf` / `.properties` / `.env`，标记语言 `.rst` / `.adoc` / `.org` / `.tex`，以及 `.diff` / `.patch` / `.log` / `.jsonl` / `.ndjson`——统一渲染层输出规范 DOM，锚点引擎对格式无感；JSON 缩进美化、XML/JSON/配置家族/标记语言语法着色（照排不重排，注释保留）、CSV/TSV 渲染为表格、diff 增删行着色、log 级别高亮、JSONL 逐行着色；EPUB 按 spine 顺序逐章渲染（解析到本地缓存，章节目录进大纲）
 - **编码自动检测**：UTF-8 / UTF-16 / GB18030（GBK）文本直接打开，Excel 导出的 GBK CSV 无乱码
 - **高亮**：划选文字，五色色点（黄 / 绿 / 蓝 / 粉 / 橙）一键高亮；基于 CSS Custom Highlight API，不修改文档 DOM
 - **批注**：正文支持 Markdown 与本地图片（编辑 + 预览）；点击高亮即可打开

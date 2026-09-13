@@ -72,7 +72,10 @@ func (a *App) OpenDocument() (*models.Document, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "打开文档",
 		Filters: []runtime.FileFilter{
-			{DisplayName: "文档 (*.md; *.txt; *.html; *.json; *.xml; *.csv; *.epub)", Pattern: "*.md;*.markdown;*.txt;*.text;*.html;*.htm;*.json;*.xml;*.csv;*.epub"},
+			{DisplayName: "所有支持的文档 (*.md; *.txt; *.html; *.json; *.xml; *.csv; *.yaml; …)", Pattern: "*.md;*.markdown;*.txt;*.text;*.html;*.htm;*.json;*.xml;*.csv;*.tsv;*.epub;*.yaml;*.yml;*.toml;*.ini;*.cfg;*.conf;*.config;*.properties;*.env;*.rst;*.adoc;*.asciidoc;*.org;*.tex;*.latex;*.diff;*.patch;*.log;*.jsonl;*.ndjson"},
+			{DisplayName: "文档 (*.md; *.txt; *.html; …)", Pattern: "*.md;*.markdown;*.txt;*.text;*.html;*.htm;*.json;*.xml;*.csv;*.tsv;*.epub"},
+			{DisplayName: "配置与数据 (*.yaml; *.yml; *.toml; *.ini; *.jsonl; …)", Pattern: "*.yaml;*.yml;*.toml;*.ini;*.cfg;*.conf;*.config;*.properties;*.env;*.jsonl;*.ndjson"},
+			{DisplayName: "标记与日志 (*.rst; *.adoc; *.org; *.tex; *.diff; *.log)", Pattern: "*.rst;*.adoc;*.asciidoc;*.org;*.tex;*.latex;*.diff;*.patch;*.log"},
 			{DisplayName: "EPUB 电子书 (*.epub)", Pattern: "*.epub"},
 			{DisplayName: "所有文件 (*.*)", Pattern: "*.*"},
 		},

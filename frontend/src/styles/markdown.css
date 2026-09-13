@@ -219,6 +219,71 @@
   font-style: italic;
 }
 
+/* ---- 照排渲染器扩展（配置家族 / 标记语言 / diff / log）---- */
+
+.tok-punct {
+  color: var(--text-tertiary, #a39d8d);
+}
+
+.tok-head {
+  font-weight: 700;
+  color: var(--text-primary, #37352f);
+}
+
+.tok-diff-add {
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+}
+
+.tok-diff-del {
+  background: rgba(198, 40, 40, 0.1);
+  color: #c62828;
+}
+
+.tok-attr {
+  color: #8250df;
+}
+
+.tok-log-error {
+  color: #c62828;
+  font-weight: 700;
+}
+
+.tok-log-warn {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.tok-log-info {
+  color: #0a7d32;
+}
+
+.dark-theme .tok-diff-add {
+  background: rgba(127, 211, 154, 0.12);
+  color: #7fd39a;
+}
+
+.dark-theme .tok-diff-del {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.dark-theme .tok-log-error {
+  color: #f87171;
+}
+
+.dark-theme .tok-log-warn {
+  color: #e0a458;
+}
+
+.dark-theme .tok-log-info {
+  color: #7fd39a;
+}
+
+.dark-theme .tok-head {
+  color: #e9e5d9;
+}
+
 .dark-theme .tok-key,
 .dark-theme .tok-attr {
   color: #c4a7ff;
