@@ -24,12 +24,34 @@ const viewerRef = ref<InstanceType<typeof DocumentViewer> | null>(null);
 
 let unlistenDrop: (() => void) | null = null;
 
+// ---- 全局拖拽视觉反馈：拖文件悬停时全屏遮罩，松开即打开 ----
+// 监听独立于平台层的 OnFileDrop（runtime 已对 drop preventDefault 阻止导航）。
+const dragDepth = ref(0);
+
+function onDragEnter(e: DragEvent) {
+  if (!e.dataTransfer?.types.includes("Files")) return;
+  dragDepth.value++;
+}
+
+function onDragLeave() {
+  if (dragDepth.value > 0) dragDepth.value--;
+}
+
+function onDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+}
+
+function onDropDismiss() {
+  dragDepth.value = 0; // 平台层回调负责打开文档，这里只收遮罩
+}
+
 onMounted(async () => {
   await init();
   await restoreLast();
-  // 拖拽文件到窗口打开（仅 Wails 壳提供）
+  // 拖拽文件到窗口打开（仅 Wails 壳提供；mock 用浏览器 HTML5 drop）
   unlistenDrop =
     getPlatform().onDroppedDocument?.((doc) => {
+      dragDepth.value = 0;
       void adopt(doc).then(() => showToast(`已打开 ${doc.name}`));
     }) ?? null;
   window.addEventListener("keydown", onKeydown);
@@ -151,7 +173,13 @@ const SHORTCUTS: [string, string][] = [
 </script>
 
 <template>
-  <div class="layout">
+  <div
+    class="layout"
+    @dragenter="onDragEnter"
+    @dragleave="onDragLeave"
+    @dragover="onDragOver"
+    @drop="onDropDismiss"
+  >
     <TopBar
       @toast="showToast"
       @find="viewerRef?.openFind()"
@@ -175,6 +203,10 @@ const SHORTCUTS: [string, string][] = [
             <button class="open-btn" @click="openFile">
               <Icon name="folder-open" :size="15" /> 打开文档
             </button>
+            <small class="drop-hint">
+              <Icon name="folder-open" :size="13" />
+              也可以把文件直接拖进窗口任意位置
+            </small>
             <small>批注数据保存在本地 SQLite 数据库，可通过 .annoti.json 与他人交换、离线合并讨论串</small>
           </div>
         </div>
@@ -227,6 +259,17 @@ const SHORTCUTS: [string, string][] = [
         </div>
       </div>
     </Transition>
+
+    <!-- 拖拽文件悬停时的全屏提示遮罩（drop 由平台层处理，这里只做视觉）。
+         不用 Transition：快速连续拖入时 enter/leave 互撞会让 transitionend
+         永不触发、遮罩卡死在 DOM（实测踩坑）；即时显隐才符合拖拽反馈语义。 -->
+    <div v-if="dragDepth > 0" class="drop-overlay">
+      <div class="drop-card">
+        <Icon name="folder-open" :size="30" />
+        <p>松开以打开文档</p>
+        <small>支持 Markdown / 文本 / HTML / JSON / XML / CSV / EPUB</small>
+      </div>
+    </div>
 
     <Transition name="toast">
       <div v-if="toast" class="toast">{{ toast }}</div>
@@ -379,6 +422,58 @@ const SHORTCUTS: [string, string][] = [
 .welcome-card small {
   display: block;
   color: var(--text-tertiary, #999);
+}
+
+.drop-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 5px 12px;
+  border: 1px dashed var(--border, #e2ded2);
+  border-radius: 999px;
+  color: var(--text-secondary, #6f6a5e);
+}
+
+/* 拖拽悬停全屏遮罩 */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 450;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(250, 249, 245, 0.82);
+  backdrop-filter: blur(2px);
+  pointer-events: none; /* 不拦截 drop，事件穿透到平台层 */
+}
+
+.dark-theme .drop-overlay {
+  background: rgba(38, 36, 30, 0.85);
+}
+
+.drop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 36px 56px;
+  border: 2px dashed var(--accent, #b45309);
+  border-radius: 18px;
+  background: var(--bg-primary, #faf9f5);
+  color: var(--accent, #b45309);
+  box-shadow: 0 18px 60px rgba(55, 53, 47, 0.18);
+}
+
+.drop-card p {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #37352f);
+}
+
+.drop-card small {
+  color: var(--text-tertiary, #a39d8d);
 }
 
 /* ---- 帮助弹窗 ---- */

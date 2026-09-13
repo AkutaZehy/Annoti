@@ -16,8 +16,14 @@ import {
   OpenDataDir,
   OpenExternal,
 } from "../../wailsjs/go/main/App";
-import { EventsOn, EventsOff } from "../../wailsjs/runtime/runtime";
+import { EventsOff, OnFileDrop } from "../../wailsjs/runtime/runtime";
 import { models } from "../../wailsjs/go/models";
+
+/** 拖拽接受的扩展名（与 Go 对话框过滤器一致；路径过滤在前端做） */
+const DROPPABLE_EXTS = new Set([
+  ".md", ".markdown", ".txt", ".text",
+  ".html", ".htm", ".json", ".xml", ".csv", ".epub",
+]);
 
 /** 生成的文档模型 → 应用层对象 */
 function toOpenedDocument(d: Record<string, unknown>): OpenedDocument {
@@ -93,9 +99,19 @@ export const wailsPlatform: Platform = {
   },
 
   onDroppedDocument(cb) {
-    EventsOn("doc:dropped", (doc: unknown) => {
-      cb(toOpenedDocument((doc ?? {}) as Record<string, unknown>));
-    });
+    // 关键：必须在前端调用 OnFileDrop 注册 window 拖拽监听——
+    // runtime 由此 preventDefault 阻止 WebView2 默认导航（拖文件=应用内
+    // 打开该文件的旧 bug），并把 drop 经 Go 事件环回。
+    // useDropTarget=false：整个窗口任意位置都可放，不要求 --wails-drop-target。
+    OnFileDrop((_x, _y, paths) => {
+      const path = paths.find((p) => DROPPABLE_EXTS.has(p.slice(p.lastIndexOf(".")).toLowerCase()));
+      if (!path) return;
+      void OpenDocumentPath(path)
+        .then((doc) => {
+          if (doc) cb(toOpenedDocument(doc as unknown as Record<string, unknown>));
+        })
+        .catch((err) => console.error("拖拽打开失败:", err));
+    }, false);
     return () => EventsOff("doc:dropped");
   },
 };

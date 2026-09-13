@@ -49,22 +49,9 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 
-	// 拖拽文件到窗口：取第一个受支持的文件按常规流程打开，
-	// 经 "doc:dropped" 事件交给前端 adopt（复用打开文档的全部逻辑）。
-	runtime.OnFileDrop(ctx, func(_ int, _ int, paths []string) {
-		for _, p := range paths {
-			if !supportedExts[strings.ToLower(filepath.Ext(p))] {
-				continue
-			}
-			doc, err := a.loadDocument(p)
-			if err != nil {
-				runtime.LogWarningf(ctx, "拖拽打开失败: %v", err)
-				return
-			}
-			runtime.EventsEmit(ctx, "doc:dropped", doc)
-			return
-		}
-	})
+	// 拖拽文件到窗口打开：拖拽监听由前端 runtime OnFileDrop 注册
+	// （不注册则 WebView2 默认导航到文件），经 OpenDocumentPath 绑定打开。
+	// Go 侧不再订阅 wails:file-drop，避免双通道重复打开。
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -97,13 +84,6 @@ func (a *App) OpenDocument() (*models.Document, error) {
 		return nil, nil // 用户取消
 	}
 	return a.loadDocument(path)
-}
-
-// 支持打开的扩展名（拖拽打开时用于甄别）。
-var supportedExts = map[string]bool{
-	".md": true, ".markdown": true, ".txt": true, ".text": true,
-	".html": true, ".htm": true, ".json": true, ".xml": true, ".csv": true,
-	".epub": true,
 }
 
 func isEpub(path string) bool { return strings.EqualFold(filepath.Ext(path), ".epub") }

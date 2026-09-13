@@ -141,6 +141,45 @@ async function loadFixture(): Promise<OpenedDocument | null> {
   }
 }
 
+const BROWSER_DROPPABLE = new Set([
+  ".md", ".markdown", ".txt", ".text", ".html", ".htm", ".json", ".xml", ".csv",
+]);
+
+/** 浏览器版拖拽：File 无路径，直接读文本内容构造文档（仅 pnpm dev 联调用） */
+function setupBrowserDrop(cb: (doc: OpenedDocument) => void): () => void {
+  const onDragOver = (e: DragEvent) => {
+    if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+  };
+  const onDrop = (e: DragEvent) => {
+    if (!e.dataTransfer?.types.includes("Files")) return;
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const dot = file.name.lastIndexOf(".");
+    if (dot === -1 || !BROWSER_DROPPABLE.has(file.name.slice(dot).toLowerCase())) return;
+    void file.text().then((content) => {
+      cb({
+        id: "mock-drop-" + file.name,
+        path: "C:\\dropped\\" + file.name,
+        name: file.name,
+        checksum: "mock-drop",
+        size: content.length,
+        changed: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        content,
+        mode: docModeOf(file.name),
+      });
+    });
+  };
+  window.addEventListener("dragover", onDragOver);
+  window.addEventListener("drop", onDrop);
+  return () => {
+    window.removeEventListener("dragover", onDragOver);
+    window.removeEventListener("drop", onDrop);
+  };
+}
+
 function loadAnnotationsFromStore(): Annotation[] {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -242,5 +281,9 @@ export const mockPlatform: Platform = {
 
   async openExternal(url: string) {
     window.open(url, "_blank", "noopener");
+  },
+
+  onDroppedDocument(cb) {
+    return setupBrowserDrop(cb);
   },
 };
