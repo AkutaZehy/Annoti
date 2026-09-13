@@ -693,6 +693,18 @@ function locate(id: string) {
 
 /** 把 Range 的中点滚到滚动容器可视区中部 */
 function centerRange(range: Range) {
+  // 批注锚在收起的 <details> 里时内容不可见，scrollIntoView 无效果——
+  // 先展开锚点路径上的全部折叠块再滚
+  let node: Node | null = range.startContainer;
+  while (node) {
+    const cur: Element | null =
+      node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+    if (!cur) break;
+    if (cur.tagName === "DETAILS" && !(cur as HTMLDetailsElement).open) {
+      (cur as HTMLDetailsElement).open = true;
+    }
+    node = cur.parentElement;
+  }
   const el = range.startContainer.parentElement;
   if (el) {
     el.scrollIntoView({ block: "center" });
