@@ -2,7 +2,9 @@
 
 Annoti 是一个本地优先的文档批注工具：打开文档，像在稿纸上一样划线、写批注、贴便签、围绕批注讨论、与朋友交换批注并离线合并。
 
-当前开发进度 **2.1.0-alpha**（V2.1：区域批注 + EPUB + 阅读工具，本地测试中）。三阶段规划（V1 → V2 → V3）基于 Wails v2，架构与设计决策：[doc/v1-architecture.md](doc/v1-architecture.md)（V1 核心）与 [doc/v2-architecture.md](doc/v2-architecture.md)（V2 增量）。
+![Annoti 主界面：文档高亮、摊开的批注便签与讨论串，右侧为批注侧栏](doc/screenshot.png)
+
+当前开发进度 **2.2.0-alpha**（V2.2：文本格式大扩展，本地测试中）。三阶段规划（V1 → V2 → V3）基于 Wails v2，架构与设计决策：[doc/v1-architecture.md](doc/v1-architecture.md)（V1 核心）与 [doc/v2-architecture.md](doc/v2-architecture.md)（V2 增量）。
 
 ## 功能
 
