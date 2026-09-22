@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"log"
 
 	"annoti/internal/localres"
 
@@ -44,6 +45,6 @@ func main() {
 		},
 	})
 	if err != nil {
-		println("Error:", err.Error())
+		log.Fatalf("Annoti 启动失败: %v", err)
 	}
 }
