@@ -121,7 +121,7 @@ async function toggleResolve(t: Thread) {
 <template>
   <div class="annotation-list">
     <div class="list-head">
-      <span>批注 ({{ orderedThreads.length }})</span>
+      <span>批注 ({{ orderedThreads.length + orphanReplies.length }})</span>
       <span class="hints">
         <span v-if="orphaned.size > 0" class="hint-chip" :title="`${orphaned.size} 条批注因文档修改而失效`">
           <Icon name="alert-triangle" :size="13" />

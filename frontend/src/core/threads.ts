@@ -89,3 +89,13 @@ export function descendantIds(list: Annotation[], id: string): Set<string> {
   }
   return doomed;
 }
+
+/**
+ * 侧栏卡片计数口径：讨论串根卡片 + 孤儿回复卡片。
+ * 回复是卡片内容、随根卡片展示，不单独计数——页签与列表头
+ * 都用这一个口径，避免相邻两个"批注 N"数字打架。
+ */
+export function cardCount(list: Annotation[]): number {
+  const idx = buildThreads(list);
+  return idx.threads.length + idx.orphanIds.size;
+}

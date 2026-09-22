@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildThreads, descendantIds, REPLY_MAX_DEPTH } from "./threads";
+import { buildThreads, cardCount, descendantIds, REPLY_MAX_DEPTH } from "./threads";
 import type { Annotation } from "@/types";
 
 let seq = 0;
@@ -66,6 +66,19 @@ describe("buildThreads", () => {
     const idx = buildThreads([root("r1"), reply("c1", "r1", 1), reply("g1", "c1", 2)]);
     expect(idx.childrenOf.get("r1")!.map((n) => n.anno.id)).toEqual(["c1"]);
     expect(idx.childrenOf.get("c1")!.map((n) => n.anno.id)).toEqual(["g1"]);
+  });
+});
+
+describe("cardCount", () => {
+  it("口径 = 讨论串根卡片 + 孤儿回复卡片，回复是卡片内容不单独计数", () => {
+    const list = [
+      root("r1"),
+      reply("c1", "r1"), // r1 串的内容
+      root("r2"),
+      reply("ghost", "missing"), // 孤儿回复单独成卡
+    ];
+    expect(cardCount(list)).toBe(3); // r1 串 + r2 串 + ghost 卡
+    expect(cardCount([])).toBe(0);
   });
 });
 

@@ -12,6 +12,7 @@ import { useDocument } from "@/composables/useDocument";
 import { useSettings } from "@/composables/useSettings";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useToastStore } from "@/stores/toastStore";
+import { cardCount } from "@/core/threads";
 import { regionMode, setRegionMode, toggleRegionMode, sidebarVisible } from "@/composables/useViewTools";
 import { getPlatform } from "@/platform";
 
@@ -103,6 +104,8 @@ function onKeydown(e: KeyboardEvent) {
 
 const sideTab = ref<"notes" | "outline">("notes");
 const outlineItems = computed(() => viewerRef.value?.outline ?? []);
+/** 与列表头同一口径的卡片数（见 core/threads.cardCount） */
+const annoCardCount = computed(() => cardCount(annotations.value));
 
 function onLocate(id: string) {
   viewerRef.value?.locate(id);
@@ -214,7 +217,7 @@ const SHORTCUTS: [string, string][] = [
       <aside v-if="currentDoc && sidebarVisible" class="sidebar">
         <div class="side-tabs">
           <button :class="{ on: sideTab === 'notes' }" @click="sideTab = 'notes'">
-            批注<em v-if="annotations.length">{{ annotations.length }}</em>
+            批注<em v-if="annoCardCount">{{ annoCardCount }}</em>
           </button>
           <button :class="{ on: sideTab === 'outline' }" @click="sideTab = 'outline'">大纲</button>
         </div>
