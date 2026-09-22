@@ -72,15 +72,16 @@ func Extract(path string) (string, error) {
 		if f.FileInfo().IsDir() {
 			continue
 		}
-		total += int64(f.UncompressedSize64)
-		if total > maxTotalBytes {
-			return "", fmt.Errorf("EPUB 解压后体积超出限制")
-		}
 		dest, err := safeJoin(dir, f.Name)
-		if err != nil {
-			return "", err
+		if err == nil {
+			// 限额按实际写入字节累计：zip 头部的 UncompressedSize64 可以谎报
+			var n int64
+			n, err = extractFile(f, dest, maxTotalBytes-total)
+			total += n
 		}
-		if err := extractFile(f, dest); err != nil {
+		if err != nil {
+			// 失败不留半成品：目录存在即缓存命中，残次品会被当成好缓存
+			_ = os.RemoveAll(dir)
 			return "", err
 		}
 	}
@@ -97,21 +98,30 @@ func safeJoin(dir, name string) (string, error) {
 	return joined, nil
 }
 
-func extractFile(f *zip.File, dest string) error {
+// extractFile 写出单个条目，最多写 budget 字节（超出即报错）。
+// 返回实际写入字节数，供调用方累计解压总量。
+func extractFile(f *zip.File, dest string, budget int64) (int64, error) {
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return err
+		return 0, err
 	}
 	src, err := f.Open()
 	if err != nil {
-		return fmt.Errorf("EPUB 条目 %s 读取失败: %w", f.Name, err)
+		return 0, fmt.Errorf("EPUB 条目 %s 读取失败: %w", f.Name, err)
 	}
 	defer src.Close()
 
 	dst, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer dst.Close()
-	_, err = io.Copy(dst, src)
-	return err
+	// 多钳 1 字节：写满 budget 后源还有内容即超限
+	n, err := io.Copy(dst, io.LimitReader(src, budget+1))
+	if err != nil {
+		return n, err
+	}
+	if n > budget {
+		return n, fmt.Errorf("EPUB 解压后体积超出限制")
+	}
+	return n, nil
 }
