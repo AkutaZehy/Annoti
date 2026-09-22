@@ -726,6 +726,13 @@ function scrollRectCenter(rect: DOMRect) {
 
 // ---- 字号缩放（文本流锚点天然抗回流） ----
 
+/** Ctrl+滚轮：步进缩放（快捷键帮助与 README 承诺的入口；拦下 WebView 页面缩放） */
+function onWheel(e: WheelEvent) {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  zoom(e.deltaY > 0 ? -0.1 : 0.1);
+}
+
 function zoom(delta: number) {
   const cur = settings.value.docZoom ?? 1;
   settings.value.docZoom = Math.round(Math.max(0.8, Math.min(2, cur + delta)) * 10) / 10;
@@ -741,7 +748,7 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
 </script>
 
 <template>
-  <div class="viewer-scroll" :style="zoomStyle" @click="onDocClick" @scroll.passive="syncRegionBoxes" @mousedown="onRegionDrawStart">
+  <div class="viewer-scroll" :style="zoomStyle" @click="onDocClick" @scroll.passive="syncRegionBoxes" @mousedown="onRegionDrawStart" @wheel="onWheel">
     <!-- 脚本禁用横幅：文档内容之前，常驻视口内容顶部 -->
     <div v-if="!isEmpty && topWarning" class="script-banner">
       <Icon name="alert-triangle" :size="14" />
