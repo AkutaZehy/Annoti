@@ -5,6 +5,7 @@ import { storeToRefs } from "pinia";
 import { getPlatform } from "@/platform";
 import { pushRecent } from "@/core/recents";
 import { useDocStore } from "@/stores/docStore";
+import { useToastStore } from "@/stores/toastStore";
 import { useAnnotations } from "./useAnnotations";
 import { useSettings } from "./useSettings";
 import type { OpenedDocument } from "@/types";
@@ -13,6 +14,7 @@ export function useDocument() {
   const { currentDoc, opening } = storeToRefs(useDocStore());
   const { loadFor, clear } = useAnnotations();
   const { settings } = useSettings();
+  const toast = useToastStore();
 
   async function adopt(doc: OpenedDocument): Promise<void> {
     currentDoc.value = doc;
@@ -31,7 +33,7 @@ export function useDocument() {
       return doc;
     } catch (e) {
       console.error("打开文档失败:", e);
-      alert("打开文档失败: " + e);
+      toast.show("打开文档失败: " + (e instanceof Error ? e.message : String(e)));
       return null;
     } finally {
       opening.value = false;

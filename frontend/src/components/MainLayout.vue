@@ -11,6 +11,7 @@ import Icon from "./ui/Icon.vue";
 import { useDocument } from "@/composables/useDocument";
 import { useSettings } from "@/composables/useSettings";
 import { useAnnotations } from "@/composables/useAnnotations";
+import { useToastStore } from "@/stores/toastStore";
 import { regionMode, setRegionMode, toggleRegionMode, sidebarVisible } from "@/composables/useViewTools";
 import { getPlatform } from "@/platform";
 
@@ -151,13 +152,10 @@ function stopResize() {
 
 // ---- toast 与帮助弹窗 ----
 
-const toast = ref<string | null>(null);
-let toastTimer: ReturnType<typeof setTimeout> | null = null;
+const toastStore = useToastStore();
 
 function showToast(message: string) {
-  toast.value = message;
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (toast.value = null), 4000);
+  toastStore.show(message);
 }
 
 const showModal = ref<"none" | "about" | "shortcuts">("none");
@@ -271,7 +269,7 @@ const SHORTCUTS: [string, string][] = [
     </div>
 
     <Transition name="toast">
-      <div v-if="toast" class="toast">{{ toast }}</div>
+      <div v-if="toastStore.message" class="toast">{{ toastStore.message }}</div>
     </Transition>
   </div>
 </template>

@@ -266,8 +266,8 @@ export const mockPlatform: Platform = {
   },
 
   async importAnnotations(): Promise<ImportResult | null> {
-    alert("Mock 模式暂不支持导入，请使用 Wails 桌面版。");
-    return null;
+    // 浏览器 mock 不实现导入：抛错由调用方 toast 提示（alert 会打断稿纸 UI）
+    throw new Error("Mock 模式暂不支持导入，请使用 Wails 桌面版");
   },
 
   async getUI() {
