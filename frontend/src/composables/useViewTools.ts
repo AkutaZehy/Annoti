@@ -14,3 +14,11 @@ export function toggleRegionMode(): boolean {
   regionMode.value = !regionMode.value;
   return regionMode.value;
 }
+
+/** 批注侧栏可见性（视图菜单勾选与主布局共享） */
+export const sidebarVisible = ref(true);
+
+export function toggleSidebar(): boolean {
+  sidebarVisible.value = !sidebarVisible.value;
+  return sidebarVisible.value;
+}

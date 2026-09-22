@@ -8,14 +8,13 @@ import { getPlatform } from "@/platform";
 import { useDocument } from "@/composables/useDocument";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useSettings } from "@/composables/useSettings";
-import { regionMode, toggleRegionMode } from "@/composables/useViewTools";
+import { regionMode, toggleRegionMode, sidebarVisible, toggleSidebar } from "@/composables/useViewTools";
 
 const emit = defineEmits<{
   (e: "toast", message: string): void;
   (e: "find"): void;
   (e: "about"): void;
   (e: "shortcuts"): void;
-  (e: "toggle-sidebar"): void;
 }>();
 
 const { currentDoc, openFile, openRecent, clearRecents } = useDocument();
@@ -99,7 +98,7 @@ const fileMenu = computed<MenuItemDef[]>(() => [
 
 const viewMenu = computed<MenuItemDef[]>(() => [
   { label: "深色主题", checked: isDark.value, action: toggleTheme },
-  { label: "批注侧栏", checked: true, action: () => emit("toggle-sidebar") },
+  { label: "批注侧栏", checked: sidebarVisible.value, action: toggleSidebar },
   { separator: true },
   { label: "放大", shortcut: "Ctrl+=", icon: "zoom-in", action: () => zoom(0.1) },
   { label: "缩小", shortcut: "Ctrl+-", icon: "zoom-out", action: () => zoom(-0.1) },

@@ -11,7 +11,7 @@ import Icon from "./ui/Icon.vue";
 import { useDocument } from "@/composables/useDocument";
 import { useSettings } from "@/composables/useSettings";
 import { useAnnotations } from "@/composables/useAnnotations";
-import { regionMode, setRegionMode, toggleRegionMode } from "@/composables/useViewTools";
+import { regionMode, setRegionMode, toggleRegionMode, sidebarVisible } from "@/composables/useViewTools";
 import { getPlatform } from "@/platform";
 
 const appVersion = __APP_VERSION__;
@@ -98,8 +98,8 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 // ---- 侧栏（批注 / 大纲 页签） ----
+// sidebarVisible 在 useViewTools（视图菜单勾选共享）
 
-const sidebarVisible = ref(true);
 const sideTab = ref<"notes" | "outline">("notes");
 const outlineItems = computed(() => viewerRef.value?.outline ?? []);
 
@@ -185,7 +185,6 @@ const SHORTCUTS: [string, string][] = [
       @find="viewerRef?.openFind()"
       @about="showModal = 'about'"
       @shortcuts="showModal = 'shortcuts'"
-      @toggle-sidebar="sidebarVisible = !sidebarVisible"
     />
 
     <main class="main-area" :style="mainStyle">
