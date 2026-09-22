@@ -142,6 +142,30 @@ describe("makeAnchor / resolveAnchor", () => {
     expect(resolved.start).toBe(second);
   });
 
+  it("上下文失效的 exact 兜底取离原位置最近的出现", () => {
+    const index = buildTextIndex(root);
+    const text = index.text;
+    const first = text.indexOf("重复词语");
+    const second = text.indexOf("重复词语", first + 1);
+    expect(second).toBeGreaterThan(first);
+    // 锚定第二次出现，但前后文已被改写（全上下文探针不再存在）
+    const anchor: TextAnchor = {
+      type: "text",
+      start: second,
+      end: second + 4,
+      exact: "重复词语",
+      prefix: "（已改写的前文）",
+      suffix: "（已改写的后文）",
+    };
+    // 文档开头插入 2 个字符：偏移轻微漂移，只剩 exact 兜底
+    const drifted = buildTextIndex(root);
+    (drifted as { text: string }).text = "XY" + text;
+
+    const resolved = resolveAnchor(drifted, anchor)!;
+    // 落在第二次出现（随漂移 +2），而不是 indexOf 的首次出现
+    expect(resolved.start).toBe(second + 2);
+  });
+
   it("引文彻底消失时返回 null（批注悬空）", () => {
     const index = buildTextIndex(root);
     const anchor: TextAnchor = {

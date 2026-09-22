@@ -24,6 +24,8 @@ export function makeAnchor(index: TextIndex, range: Range): TextAnchor | null {
 /**
  * 把锚点解析回文本流偏移。
  * 策略依次为：偏移直命中 → 全上下文匹配 → 纯 exact 匹配。
+ * exact 兜底取全文出现位置中离原偏移最近的一处：引文在文档里
+ * 重复出现而上下文又被改动时，取首次出现会静默绑到错误的实例上。
  * 全部失败返回 null（批注悬空，UI 应标记为"失效"）。
  */
 export function resolveAnchor(index: TextIndex, anchor: TextAnchor): { start: number; end: number } | null {
@@ -45,12 +47,28 @@ export function resolveAnchor(index: TextIndex, anchor: TextAnchor): { start: nu
       }
     }
 
-    // 3) exact 单独匹配
-    const exactAt = text.indexOf(anchor.exact);
-    if (exactAt >= 0) {
-      return { start: exactAt, end: exactAt + anchor.exact.length };
+    // 3) exact 单独匹配：全部出现位置里取离原 start 最近的
+    const nearest = nearestOccurrence(text, anchor.exact, anchor.start);
+    if (nearest >= 0) {
+      return { start: nearest, end: nearest + anchor.exact.length };
     }
   }
 
   return null;
+}
+
+/** needle 在 text 中离 hint 最近的出现起点；无出现返回 -1 */
+function nearestOccurrence(text: string, needle: string, hint: number): number {
+  let best = -1;
+  let bestDist = Infinity;
+  let at = text.indexOf(needle);
+  while (at >= 0) {
+    const dist = Math.abs(at - hint);
+    if (dist < bestDist) {
+      best = at;
+      bestDist = dist;
+    }
+    at = text.indexOf(needle, at + 1);
+  }
+  return best;
 }
