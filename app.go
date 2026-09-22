@@ -116,11 +116,26 @@ func (a *App) OpenDocument() (*models.Document, error) {
 
 func isEpub(path string) bool { return strings.EqualFold(filepath.Ext(path), ".epub") }
 
+// 文档大小上限：文本与 EPUB 容器分开设限，超出即拒绝打开——
+// loadDocument 同步整读进内存，超大文件会冻结 UI 甚至 OOM。
+const (
+	maxTextBytes = 64 << 20  // 文本 64 MiB
+	maxEpubBytes = 256 << 20 // EPUB 容器 256 MiB（解包后另有限额在 internal/epub）
+)
+
 // loadDocument 读取文件并登记入库。
 // 文本格式经编码自动检测（UTF-8/UTF-16/GB18030）转成 UTF-8 交给前端；
 // EPUB 是二进制容器：不解码不进 Content，登记后解包到 library 缓存，
 // 前端经 /local/ 抓取章节自行渲染。
 func (a *App) loadDocument(path string) (*models.Document, error) {
+	limit := int64(maxTextBytes)
+	if isEpub(path) {
+		limit = maxEpubBytes
+	}
+	if info, err := os.Stat(path); err == nil && info.Size() > limit {
+		return nil, fmt.Errorf("文件过大（%.1f MiB，上限 %d MiB）",
+			float64(info.Size())/(1<<20), limit>>20)
+	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("读取文件失败: %w", err)
