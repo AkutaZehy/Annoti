@@ -303,7 +303,7 @@ async function toggleResolve(t: Thread) {
   gap: 4px;
   font-size: 12px;
   font-weight: 500;
-  color: #b45309;
+  color: var(--accent, #b45309);
 }
 
 .author-filter {
@@ -360,14 +360,14 @@ async function toggleResolve(t: Thread) {
 
 .swatch-chip.on {
   border-color: var(--accent, #b45309);
-  background: rgba(180, 83, 9, 0.06);
+  background: var(--accent-soft, rgba(180, 83, 9, 0.08));
 }
 
 .swatch-chip .dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1px solid rgba(55, 53, 47, 0.15);
+  border: 1px solid var(--dot-outline, rgba(55, 53, 47, 0.15));
 }
 
 .chip {
@@ -390,7 +390,7 @@ async function toggleResolve(t: Thread) {
 .chip.on {
   border-color: var(--accent, #b45309);
   color: var(--accent, #b45309);
-  background: rgba(180, 83, 9, 0.06);
+  background: var(--accent-soft, rgba(180, 83, 9, 0.08));
 }
 
 .chip .dot {
@@ -452,7 +452,7 @@ async function toggleResolve(t: Thread) {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  border: 1px solid rgba(55, 53, 47, 0.15);
+  border: 1px solid var(--dot-outline, rgba(55, 53, 47, 0.15));
   flex-shrink: 0;
 }
 
@@ -460,8 +460,8 @@ async function toggleResolve(t: Thread) {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0 0 1px rgba(55, 53, 47, 0.12);
+  border: 1.5px solid var(--dot-ring, rgba(255, 255, 255, 0.8));
+  box-shadow: 0 0 0 1px var(--dot-ring-outline, rgba(55, 53, 47, 0.12));
   flex-shrink: 0;
 }
 
@@ -476,7 +476,7 @@ async function toggleResolve(t: Thread) {
 }
 
 .resolved-mark {
-  color: #2e7d32;
+  color: var(--success, #2e7d32);
 }
 
 .time {
@@ -514,13 +514,13 @@ async function toggleResolve(t: Thread) {
 }
 
 .tool:hover {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.08);
+  color: var(--success, #2e7d32);
+  background: var(--success-soft, rgba(46, 125, 50, 0.1));
 }
 
 .del:hover {
-  color: #c62828;
-  background: rgba(198, 40, 40, 0.08);
+  color: var(--danger, #c62828);
+  background: var(--danger-soft, rgba(198, 40, 40, 0.08));
 }
 
 .quote {
@@ -610,7 +610,7 @@ async function toggleResolve(t: Thread) {
   align-items: center;
   gap: 3px;
   font-size: 11.5px;
-  color: #b45309;
+  color: var(--accent, #b45309);
 }
 
 .empty-state {

@@ -36,6 +36,43 @@
   --sticky-bg: #fbf3cf;
   --sticky-header: #f3e6a8;
   --sticky-text: #4a431f;
+  --sticky-border: rgba(40, 35, 20, 0.08);
+  --sticky-surface: rgba(255, 255, 255, 0.55);
+  --sticky-surface-hover: rgba(255, 255, 255, 0.5);
+  --sticky-divider: rgba(40, 35, 20, 0.12);
+  --sticky-hover-bg: rgba(40, 35, 20, 0.08);
+  --sticky-hover-text: rgba(20, 18, 8, 0.85);
+  --sticky-accent: #f9a825;
+  --sticky-input-bg: rgba(255, 255, 255, 0.75);
+  --sticky-input-text: #1a1a1a;
+  --sticky-input-border: rgba(40, 35, 20, 0.18);
+  --sticky-ghost-bg: rgba(255, 255, 255, 0.6);
+  --sticky-ghost-text: rgba(20, 18, 8, 0.6);
+  --sticky-ghost-border: rgba(40, 35, 20, 0.15);
+  --sticky-primary-bg: #f9a825;
+  --sticky-primary-text: #1a1a1a;
+  --sticky-primary-hover: #fbc02d;
+  --sticky-shadow-rest:
+    0 1px 2px rgba(40, 35, 20, 0.14), 0 6px 18px rgba(40, 35, 20, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --sticky-shadow-hover:
+    0 2px 4px rgba(40, 35, 20, 0.14), 0 12px 28px rgba(40, 35, 20, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --sticky-shadow-picked:
+    0 6px 14px rgba(40, 35, 20, 0.18), 0 22px 48px rgba(40, 35, 20, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
+  /* 语义色与圆点描边 */
+  --danger: #c62828;
+  --danger-soft: rgba(198, 40, 40, 0.08);
+  --success: #2e7d32;
+  --success-soft: rgba(46, 125, 50, 0.1);
+  --accent-soft: rgba(180, 83, 9, 0.08);
+  --accent-glow: rgba(180, 83, 9, 0.35);
+  --accent-line: rgba(180, 83, 9, 0.25);
+  --dot-outline: rgba(55, 53, 47, 0.15);
+  --dot-ring: rgba(255, 255, 255, 0.8);
+  --dot-ring-outline: rgba(55, 53, 47, 0.12);
 
   /* 侧栏 / 按钮 / 输入 */
   --sidebar-bg: #f5f3ec;

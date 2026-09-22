@@ -21,20 +21,21 @@ const emit = defineEmits<{
 
 import { HIGHLIGHT_COLORS } from "@/core/highlight";
 
-function tintOf(color: string): string {
-  return HIGHLIGHT_COLORS.find((c) => c.value === color)?.swatch ?? "#b45309";
-}
-
+// 无高亮色的区域批注不指定 borderColor/背景，交给 CSS 的 --accent 系列
+// （暗色主题下硬编码亮色会看不清）；高亮色是内容语义，双主题共用同一色。
 function boxStyle(b: RegionBox) {
-  const tint = tintOf(b.color);
-  return {
+  const tint = HIGHLIGHT_COLORS.find((c) => c.value === b.color)?.swatch;
+  const style: Record<string, string> = {
     left: `${b.rect.left}px`,
     top: `${b.rect.top}px`,
     width: `${b.rect.width}px`,
     height: `${b.rect.height}px`,
-    borderColor: tint,
-    backgroundColor: `${tint}1f`,
   };
+  if (tint) {
+    style.borderColor = tint;
+    style.backgroundColor = `${tint}1f`;
+  }
+  return style;
 }
 </script>
 
@@ -67,7 +68,8 @@ function boxStyle(b: RegionBox) {
 
 .region-box {
   position: fixed;
-  border: 1.5px solid #b45309;
+  border: 1.5px solid var(--accent, #b45309);
+  background: var(--accent-soft, rgba(180, 83, 9, 0.08));
   border-radius: 4px;
   pointer-events: auto;
   cursor: pointer;
@@ -76,13 +78,15 @@ function boxStyle(b: RegionBox) {
 
 .region-box:hover,
 .region-box.active {
-  box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.35), 0 2px 10px rgba(55, 53, 47, 0.18);
+  box-shadow:
+    0 0 0 2px var(--accent-glow, rgba(180, 83, 9, 0.35)),
+    0 2px 10px rgba(55, 53, 47, 0.18);
 }
 
 .region-preview {
   position: fixed;
-  border: 1.5px dashed #b45309;
-  background: rgba(180, 83, 9, 0.08);
+  border: 1.5px dashed var(--accent, #b45309);
+  background: var(--accent-soft, rgba(180, 83, 9, 0.08));
   border-radius: 4px;
 }
 </style>

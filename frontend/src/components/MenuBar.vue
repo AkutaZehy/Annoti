@@ -205,7 +205,7 @@ onBeforeUnmount(() => {
 }
 
 .menu-item.danger {
-  color: #c62828;
+  color: var(--danger, #c62828);
 }
 
 .mark {

@@ -891,9 +891,9 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
   max-width: 880px;
   padding: 8px 14px;
   font-size: 12.5px;
-  color: #b45309;
-  background: rgba(180, 83, 9, 0.08);
-  border-top: 1px solid rgba(180, 83, 9, 0.25);
+  color: var(--accent, #b45309);
+  background: var(--accent-soft, rgba(180, 83, 9, 0.08));
+  border-top: 1px solid var(--accent-line, rgba(180, 83, 9, 0.25));
 }
 
 /* 脚本禁用：顶部常驻横幅（文档内容上方） */

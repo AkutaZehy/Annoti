@@ -335,13 +335,10 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 .sticky-note {
   position: fixed;
   background: var(--sticky-bg, #fbf3cf);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--sticky-border, rgba(40, 35, 20, 0.08));
   border-radius: 12px;
-  /* 轻拟物：接触阴影 + 环境阴影 + 纸面上缘反光 */
-  box-shadow:
-    0 1px 2px rgba(40, 35, 20, 0.14),
-    0 6px 18px rgba(40, 35, 20, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  /* 轻拟物：接触阴影 + 环境阴影 + 纸面上缘反光（整体走 token，暗色不糊） */
+  box-shadow: var(--sticky-shadow-rest);
   padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
@@ -371,19 +368,13 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 /* 悬停：轻轻抬起 */
 .sticky-note:hover {
   transform: rotate(var(--tilt, 0deg)) translateY(-2px);
-  box-shadow:
-    0 2px 4px rgba(40, 35, 20, 0.14),
-    0 12px 28px rgba(40, 35, 20, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: var(--sticky-shadow-hover);
 }
 
 /* 拖起：略微放大 + 更深的悬浮投影 */
 .sticky-note.picked {
   transform: rotate(var(--tilt, 0deg)) scale(1.02);
-  box-shadow:
-    0 6px 14px rgba(40, 35, 20, 0.18),
-    0 22px 48px rgba(40, 35, 20, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: var(--sticky-shadow-picked);
 }
 
 @keyframes pop-in {
@@ -405,7 +396,7 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--dot-outline, rgba(55, 53, 47, 0.15));
   flex-shrink: 0;
 }
 
@@ -413,8 +404,8 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.75);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  border: 2px solid var(--dot-ring, rgba(255, 255, 255, 0.8));
+  box-shadow: 0 0 0 1px var(--dot-ring-outline, rgba(55, 53, 47, 0.12));
   flex-shrink: 0;
 }
 
@@ -507,24 +498,24 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 }
 
 .icon-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: rgba(0, 0, 0, 0.8);
+  background: var(--sticky-hover-bg, rgba(40, 35, 20, 0.08));
+  color: var(--sticky-hover-text, rgba(20, 18, 8, 0.85));
 }
 
 .icon-btn.danger:hover {
-  color: #c62828;
+  color: var(--danger, #c62828);
 }
 
 .icon-btn.active {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.14);
+  color: var(--success, #2e7d32);
+  background: var(--success-soft, rgba(46, 125, 50, 0.1));
 }
 
 .quote {
   margin: 0;
   padding: 5px 9px;
-  border-left: 3px solid #f9a825;
-  background: rgba(255, 255, 255, 0.55);
+  border-left: 3px solid var(--sticky-accent, #f9a825);
+  background: var(--sticky-surface, rgba(255, 255, 255, 0.55));
   border-radius: 4px;
   font-size: 12px;
   color: var(--sticky-text, #4a431f);
@@ -539,8 +530,8 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
   align-items: center;
   gap: 5px;
   padding: 4px 8px;
-  border-left: 3px solid #f9a825;
-  background: rgba(255, 255, 255, 0.45);
+  border-left: 3px solid var(--sticky-accent, #f9a825);
+  background: var(--sticky-surface, rgba(255, 255, 255, 0.55));
   border-radius: 4px;
   font-size: 12px;
   color: var(--sticky-text, #4a431f);
@@ -573,7 +564,7 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
   gap: 6px;
   max-height: 180px;
   overflow-y: auto;
-  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+  border-top: 1px dashed var(--sticky-divider, rgba(40, 35, 20, 0.12));
   padding-top: 8px;
 }
 
@@ -589,7 +580,7 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 }
 
 .reply:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--sticky-surface-hover, rgba(255, 255, 255, 0.5));
 }
 
 .reply-author {
@@ -627,10 +618,10 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 
 .reply-input {
   flex: 1;
-  border: 1px solid rgba(0, 0, 0, 0.16);
+  border: 1px solid var(--sticky-input-border, rgba(40, 35, 20, 0.18));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.75);
-  color: #1a1a1a;
+  background: var(--sticky-input-bg, rgba(255, 255, 255, 0.75));
+  color: var(--sticky-input-text, #1a1a1a);
   font: inherit;
   font-size: 12.5px;
   padding: 6px 8px;
@@ -641,16 +632,16 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 
 .reply-input:focus {
   outline: none;
-  border-color: #f9a825;
+  border-color: var(--sticky-accent, #f9a825);
 }
 
 .editor {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--sticky-input-border, rgba(40, 35, 20, 0.18));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #1a1a1a;
+  background: var(--sticky-input-bg, rgba(255, 255, 255, 0.75));
+  color: var(--sticky-input-text, #1a1a1a);
   font-size: 13.5px;
   font-family: inherit;
   line-height: 1.6;
@@ -661,14 +652,14 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 
 .editor:focus {
   outline: none;
-  border-color: #f9a825;
+  border-color: var(--sticky-accent, #f9a825);
 }
 
 .editor.preview {
   min-height: 80px;
   max-height: 160px;
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--sticky-surface, rgba(255, 255, 255, 0.5));
   border-style: dashed;
 }
 
@@ -693,14 +684,14 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 }
 
 .btn.ghost {
-  background: rgba(255, 255, 255, 0.6);
-  color: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: var(--sticky-ghost-bg, rgba(255, 255, 255, 0.6));
+  color: var(--sticky-ghost-text, rgba(20, 18, 8, 0.6));
+  border: 1px solid var(--sticky-ghost-border, rgba(40, 35, 20, 0.15));
 }
 
 .btn.primary {
-  background: #f9a825;
-  color: #1a1a1a;
+  background: var(--sticky-primary-bg, #f9a825);
+  color: var(--sticky-primary-text, #1a1a1a);
   font-weight: 700;
 }
 
@@ -710,6 +701,6 @@ const replyTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: #fbc02d;
+  background: var(--sticky-primary-hover, #fbc02d);
 }
 </style>
