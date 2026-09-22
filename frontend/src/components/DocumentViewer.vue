@@ -8,22 +8,22 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { buildTextIndex, offsetsToRange, type TextIndex } from "@/core/textIndex";
 import { makeAnchor, resolveAnchor } from "@/core/anchor";
 import { descendantIds, buildThreads } from "@/core/threads";
-import { HighlightPainter, FIND_BUCKET, FIND_CURRENT_BUCKET } from "@/core/highlight";
-import { collectMatches } from "@/core/find";
+import { HighlightPainter } from "@/core/highlight";
 import {
   isRegionAnchor,
-  pickRegionTarget,
   regionBoxRect,
   regionTargetAvailable,
 } from "@/core/regions";
 import { renderDocument, type RenderedDoc } from "@/formats";
 import { renderEpub } from "@/formats/epub";
 import { inWailsShell, getPlatform } from "@/platform";
-import { regionMode, setRegionMode } from "@/composables/useViewTools";
+import { regionMode } from "@/composables/useViewTools";
 import { useSettings } from "@/composables/useSettings";
 import type { DocMode, OutlineItem } from "@/types";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useDocument } from "@/composables/useDocument";
+import { useFind } from "@/composables/useFind";
+import { useRegionDraw } from "@/composables/useRegionDraw";
 import SelectionToolbar from "./SelectionToolbar.vue";
 import StickyNote from "./StickyNote.vue";
 import RegionLayer from "./RegionLayer.vue";
@@ -207,8 +207,15 @@ function repaint() {
 
 // ---- 区域批注（框选） ----
 
-const drawBox = ref<{ x: number; y: number; w: number; h: number } | null>(null);
 const regionBoxes = ref<RegionBox[]>([]);
+
+const { drawBox, onRegionDrawStart } = useRegionDraw({
+  getIndex: () => index,
+  getContainer: () => containerRef.value,
+  create,
+  setActive,
+  openNote,
+});
 
 function syncRegionBoxes() {
   if (!index || !containerRef.value) {
@@ -226,126 +233,17 @@ function syncRegionBoxes() {
   regionBoxes.value = boxes;
 }
 
-function onRegionDrawStart(e: MouseEvent) {
-  if (!regionMode.value || e.button !== 0) return;
-  const idx = index;
-  const container = containerRef.value;
-  if (!idx || !container) return;
-  e.preventDefault();
-  const startX = e.clientX;
-  const startY = e.clientY;
-
-  const onMove = (ev: MouseEvent) => {
-    drawBox.value = {
-      x: Math.min(startX, ev.clientX),
-      y: Math.min(startY, ev.clientY),
-      w: Math.abs(ev.clientX - startX),
-      h: Math.abs(ev.clientY - startY),
-    };
-  };
-  const onUp = async () => {
-    document.removeEventListener("mousemove", onMove);
-    document.removeEventListener("mouseup", onUp);
-    const rect = drawBox.value;
-    drawBox.value = null;
-    if (!rect || rect.w < 8 || rect.h < 8) return; // 过小视为误触
-
-    const target = pickRegionTarget(
-      idx,
-      new DOMRect(rect.x, rect.y, rect.w, rect.h),
-      container,
-    );
-    setRegionMode(false);
-    const saved = await create(target.anchor, target.quote, "", "");
-    setActive(saved.id);
-    openNote(saved.id, target.rect);
-  };
-  document.addEventListener("mousemove", onMove);
-  document.addEventListener("mouseup", onUp);
-}
-
 function onRegionOpen(id: string, rect: DOMRect) {
   openNote(id, rect);
 }
 
-// ---- 文内查找（Ctrl+F） ----
+// ---- 文内查找（Ctrl+F）：状态机在 useFind ----
 
-const findState = ref({ open: false, query: "", matches: [] as number[], current: -1 });
-let findTimer: ReturnType<typeof setTimeout> | null = null;
-
-function openFind() {
-  findState.value.open = true;
-}
-
-function closeFind() {
-  findState.value.open = false;
-  findState.value.matches = [];
-  findState.value.current = -1;
-  painter.setBucket(FIND_BUCKET, []);
-  painter.setBucket(FIND_CURRENT_BUCKET, []);
-}
-
-function onFindQuery(q: string) {
-  findState.value.query = q;
-  if (findTimer) clearTimeout(findTimer);
-  findTimer = setTimeout(runFind, 150);
-}
-
-function runFind() {
-  if (findTimer) {
-    clearTimeout(findTimer);
-    findTimer = null;
-  }
-  if (!index || !findState.value.query.trim()) {
-    findState.value.matches = [];
-    findState.value.current = -1;
-    painter.setBucket(FIND_BUCKET, []);
-    painter.setBucket(FIND_CURRENT_BUCKET, []);
-    return;
-  }
-  const matches = collectMatches(index.text, findState.value.query);
-  findState.value.matches = matches;
-  findState.value.current = matches.length ? 0 : -1;
-  paintFind();
-  if (matches.length) scrollToMatch(0);
-}
-
-function paintFind() {
-  if (!index) return;
-  const { matches, current, query } = findState.value;
-  const len = query.length;
-  painter.setBucket(
-    FIND_BUCKET,
-    matches
-      .map((o) => offsetsToRange(index!, o, o + len))
-      .filter((r): r is Range => r !== null),
-  );
-  painter.setBucket(
-    FIND_CURRENT_BUCKET,
-    current >= 0 && matches[current] !== undefined
-      ? [offsetsToRange(index, matches[current], matches[current] + len)].filter(
-          (r): r is Range => r !== null,
-        )
-      : [],
-  );
-}
-
-function findStep(delta: number) {
-  const { matches } = findState.value;
-  if (!matches.length) return;
-  const next = (findState.value.current + delta + matches.length) % matches.length;
-  findState.value.current = next;
-  paintFind();
-  scrollToMatch(next);
-}
-
-function scrollToMatch(at: number) {
-  if (!index) return;
-  const start = findState.value.matches[at];
-  if (start === undefined) return;
-  const range = offsetsToRange(index, start, start + findState.value.query.length);
-  if (range) centerRange(range);
-}
+const { findState, openFind, closeFind, onFindQuery, runFind, findStep } = useFind({
+  painter,
+  getIndex: () => index,
+  centerRange,
+});
 
 // ---- 大纲（md/html 标题树；epub 章节） ----
 
