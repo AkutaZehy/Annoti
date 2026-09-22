@@ -1,4 +1,4 @@
-// 视图工具的全局开关（单文档应用，与 useAnnotations 同类的模块级状态）。
+// 视图工具的全局开关（模块级共享 ref；文档/批注状态在 stores/）。
 // 菜单栏（TopBar）与文档视图（DocumentViewer）共享，避免事件往复传递。
 
 import { ref } from "vue";

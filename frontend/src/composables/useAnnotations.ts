@@ -1,18 +1,18 @@
 // 批注数据操作。DOM 相关（选区/高亮）由 DocumentViewer 负责，
 // 本模块只做数据：创建、更新、删除、批量加载。
+// 状态容器是 annotationStore（Pinia）；文档 ID 直接查 docStore。
 
-import { ref } from "vue";
+import { storeToRefs } from "pinia";
 import { getPlatform } from "@/platform";
 import { descendantIds } from "@/core/threads";
+import { useAnnotationStore } from "@/stores/annotationStore";
+import { useDocStore } from "@/stores/docStore";
 import { useSettings } from "./useSettings";
 import type { Annotation, TextAnchor } from "@/types";
 
-const annotations = ref<Annotation[]>([]);
-/** 锚点解析失败（文档改动导致悬空）的批注 ID */
-const orphaned = ref<Set<string>>(new Set());
-const activeId = ref<string | null>(null);
-
 export function useAnnotations() {
+  const { annotations, orphaned, activeId } = storeToRefs(useAnnotationStore());
+  const { currentDoc } = storeToRefs(useDocStore());
   const { settings } = useSettings();
 
   async function loadFor(docId: string) {
@@ -37,49 +37,49 @@ export function useAnnotations() {
     body = "",
     color = "",
   ): Promise<Annotation> {
-    const docId = currentDocId();
+    const docId = currentDoc.value?.id;
     if (!docId) throw new Error("当前没有打开的文档");
-  const draft: Annotation = {
-    id: "",
-    documentId: docId,
-    authorId: "local",
-    authorName: settings.value.authorName || "Me",
-    quote,
-    body,
-    anchor,
-    color,
-    resolved: false,
-    createdAt: 0,
-    updatedAt: 0,
-  };
-  const saved = await getPlatform().saveAnnotation(draft);
-  annotations.value = [...annotations.value, saved];
-  return saved;
-}
+    const draft: Annotation = {
+      id: "",
+      documentId: docId,
+      authorId: "local",
+      authorName: settings.value.authorName || "Me",
+      quote,
+      body,
+      anchor,
+      color,
+      resolved: false,
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    const saved = await getPlatform().saveAnnotation(draft);
+    annotations.value = [...annotations.value, saved];
+    return saved;
+  }
 
-/** 新建回复：无锚点、无引文，位置由父批注给。 */
-async function createReply(parentId: string, body: string): Promise<Annotation> {
-  const docId = currentDocId();
-  if (!docId) throw new Error("当前没有打开的文档");
-  const anchor: TextAnchor = { type: "text", start: 0, end: 0, exact: "", prefix: "", suffix: "" };
-  const draft: Annotation = {
-    id: "",
-    documentId: docId,
-    parentId,
-    authorId: "local",
-    authorName: settings.value.authorName || "Me",
-    quote: "",
-    body,
-    anchor,
-    color: "",
-    resolved: false,
-    createdAt: 0,
-    updatedAt: 0,
-  };
-  const saved = await getPlatform().saveAnnotation(draft);
-  annotations.value = [...annotations.value, saved];
-  return saved;
-}
+  /** 新建回复：无锚点、无引文，位置由父批注给。 */
+  async function createReply(parentId: string, body: string): Promise<Annotation> {
+    const docId = currentDoc.value?.id;
+    if (!docId) throw new Error("当前没有打开的文档");
+    const anchor: TextAnchor = { type: "text", start: 0, end: 0, exact: "", prefix: "", suffix: "" };
+    const draft: Annotation = {
+      id: "",
+      documentId: docId,
+      parentId,
+      authorId: "local",
+      authorName: settings.value.authorName || "Me",
+      quote: "",
+      body,
+      anchor,
+      color: "",
+      resolved: false,
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    const saved = await getPlatform().saveAnnotation(draft);
+    annotations.value = [...annotations.value, saved];
+    return saved;
+  }
 
   async function update(id: string, patch: Partial<Annotation>): Promise<Annotation | null> {
     const index = annotations.value.findIndex((a) => a.id === id);
@@ -121,14 +121,4 @@ async function createReply(parentId: string, body: string): Promise<Annotation> 
     setActive,
     markOrphaned,
   };
-}
-
-// 当前文档 ID 由 useDocument 持有；为避免循环依赖，
-// 用一个模块级注入点，由 useDocument 在打开时写入。
-let _currentDocId: string | null = null;
-export function setCurrentDocId(id: string | null) {
-  _currentDocId = id;
-}
-function currentDocId(): string | null {
-  return _currentDocId;
 }

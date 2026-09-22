@@ -1,22 +1,21 @@
 // 当前文档状态与打开流程。
+// 状态容器是 docStore（Pinia）；批注随文档切换由 useAnnotations.loadFor 载入。
 
-import { ref } from "vue";
+import { storeToRefs } from "pinia";
 import { getPlatform } from "@/platform";
 import { pushRecent } from "@/core/recents";
-import { setCurrentDocId, useAnnotations } from "./useAnnotations";
+import { useDocStore } from "@/stores/docStore";
+import { useAnnotations } from "./useAnnotations";
 import { useSettings } from "./useSettings";
 import type { OpenedDocument } from "@/types";
 
-const currentDoc = ref<OpenedDocument | null>(null);
-const opening = ref(false);
-
 export function useDocument() {
+  const { currentDoc, opening } = storeToRefs(useDocStore());
   const { loadFor, clear } = useAnnotations();
   const { settings } = useSettings();
 
   async function adopt(doc: OpenedDocument): Promise<void> {
     currentDoc.value = doc;
-    setCurrentDocId(doc.id);
     settings.value.lastPath = doc.path; // 设置变更会自动防抖落盘
     settings.value.recents = pushRecent(settings.value.recents, doc.path, doc.name, Date.now());
     await loadFor(doc.id);
@@ -73,7 +72,6 @@ export function useDocument() {
 
   function closeFile() {
     currentDoc.value = null;
-    setCurrentDocId(null);
     clear();
   }
 
