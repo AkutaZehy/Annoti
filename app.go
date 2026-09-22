@@ -172,11 +172,8 @@ func (a *App) LoadAnnotations(docID string) ([]models.Annotation, error) {
 	return a.store.ListAnnotations(docID)
 }
 
-// SaveAnnotation 新建（ID 为空）或更新批注，返回落库后的版本。
-func (a *App) SaveAnnotation(anno models.Annotation) (models.Annotation, error) {
-	if err := a.ready(); err != nil {
-		return models.Annotation{}, err
-	}
+// prepareAnnotation 落库前的统一准备：补 ID、盖时间戳、补锚点类型。
+func prepareAnnotation(anno *models.Annotation) {
 	now := time.Now().UnixMilli()
 	if anno.ID == "" {
 		anno.ID = "anno-" + uuid.NewString()
@@ -186,6 +183,14 @@ func (a *App) SaveAnnotation(anno models.Annotation) (models.Annotation, error) 
 	if anno.Anchor.Type == "" {
 		anno.Anchor.Type = models.AnchorTypeText // 区域批注自带 type=region，不覆盖
 	}
+}
+
+// SaveAnnotation 新建（ID 为空）或更新批注，返回落库后的版本。
+func (a *App) SaveAnnotation(anno models.Annotation) (models.Annotation, error) {
+	if err := a.ready(); err != nil {
+		return models.Annotation{}, err
+	}
+	prepareAnnotation(&anno)
 	if err := a.store.SaveAnnotation(&anno); err != nil {
 		return models.Annotation{}, fmt.Errorf("保存批注失败: %w", err)
 	}
@@ -287,9 +292,11 @@ func (a *App) ImportAnnotations(docID string) (*ImportResult, error) {
 	}
 	res := pack.MergeImport(p, docID, existing)
 	for i := range res.Writes {
-		if _, err := a.SaveAnnotation(res.Writes[i]); err != nil {
-			return nil, err
-		}
+		prepareAnnotation(&res.Writes[i])
+	}
+	// 单事务落库：任一条失败整体回滚，不留半截导入
+	if err := a.store.SaveAnnotationsBatch(res.Writes); err != nil {
+		return nil, fmt.Errorf("导入批注失败（已回滚）: %w", err)
 	}
 	return &ImportResult{
 		Imported:     res.Added,

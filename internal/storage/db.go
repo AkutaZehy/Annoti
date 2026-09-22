@@ -217,39 +217,80 @@ func (s *Store) ListAnnotations(docID string) ([]models.Annotation, error) {
 	return list, rows.Err()
 }
 
+const upsertAnnotationSQL = `INSERT INTO annotations
+	(id, document_id, parent_id, author_id, author_name, quote, body, anchor, color, resolved, created_at, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	ON CONFLICT(id) DO UPDATE SET
+		parent_id = excluded.parent_id,
+		author_id = excluded.author_id,
+		author_name = excluded.author_name,
+		quote = excluded.quote,
+		body = excluded.body,
+		anchor = excluded.anchor,
+		color = excluded.color,
+		resolved = excluded.resolved,
+		updated_at = excluded.updated_at`
+
+// annotationArgs 组装 upsert 参数（anchor 序列化为 JSON，空 ParentID 存 NULL）。
+func annotationArgs(a *models.Annotation) ([]any, error) {
+	anchorJSON, err := json.Marshal(a.Anchor)
+	if err != nil {
+		return nil, err
+	}
+	var parentArg any
+	if a.ParentID == "" {
+		parentArg = nil
+	} else {
+		parentArg = a.ParentID
+	}
+	return []any{a.ID, a.DocumentID, parentArg, a.AuthorID, a.AuthorName, a.Quote, a.Body,
+		string(anchorJSON), a.Color, a.Resolved, a.CreatedAt, a.UpdatedAt}, nil
+}
+
 // SaveAnnotation 新建或更新一条批注：ID 为空则生成，时间戳由调用方填好。
 func (s *Store) SaveAnnotation(a *models.Annotation) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	anchorJSON, err := json.Marshal(a.Anchor)
+	args, err := annotationArgs(a)
 	if err != nil {
 		return err
 	}
-	parentID := a.ParentID
-	var parentArg interface{}
-	if parentID == "" {
-		parentArg = nil
-	} else {
-		parentArg = parentID
-	}
-
-	_, err = s.db.Exec(`INSERT INTO annotations
-		(id, document_id, parent_id, author_id, author_name, quote, body, anchor, color, resolved, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			parent_id = excluded.parent_id,
-			author_id = excluded.author_id,
-			author_name = excluded.author_name,
-			quote = excluded.quote,
-			body = excluded.body,
-			anchor = excluded.anchor,
-			color = excluded.color,
-			resolved = excluded.resolved,
-			updated_at = excluded.updated_at`,
-		a.ID, a.DocumentID, parentArg, a.AuthorID, a.AuthorName, a.Quote, a.Body,
-		string(anchorJSON), a.Color, a.Resolved, a.CreatedAt, a.UpdatedAt)
+	_, err = s.db.Exec(upsertAnnotationSQL, args...)
 	return err
+}
+
+// SaveAnnotationsBatch 在单个事务里批量 upsert 批注：任一条失败整体回滚，
+// 导入中途出错不留半截数据。空列表是 no-op。
+func (s *Store) SaveAnnotationsBatch(annos []models.Annotation) error {
+	if len(annos) == 0 {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare(upsertAnnotationSQL)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+	for i := range annos {
+		args, err := annotationArgs(&annos[i])
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		if _, err := stmt.Exec(args...); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("保存批注 %s 失败: %w", annos[i].ID, err)
+		}
+	}
+	return tx.Commit()
 }
 
 // DeleteAnnotation 删除批注及其全部后代（整棵子树级联）。

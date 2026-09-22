@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"math"
 	"testing"
 
 	"annoti/internal/models"
@@ -153,6 +154,44 @@ func TestOrphanReplyAllowed(t *testing.T) {
 	list, err := store.ListAnnotations(doc.ID)
 	if err != nil || len(list) != 1 || list[0].ParentID != "missing-root" {
 		t.Fatalf("读取结果不符: %+v (%v)", list, err)
+	}
+}
+
+// 批量写入往返：一次事务写入整棵讨论串，空列表是 no-op。
+func TestSaveAnnotationsBatchRoundtrip(t *testing.T) {
+	store := newTestStore(t)
+	doc, _ := store.UpsertDocument(`C:\docs\batch.md`, []byte("正文"))
+
+	root := mkAnnotation(doc.ID, "b-root", "引文", 0, 2)
+	reply := mkAnnotation(doc.ID, "b-reply", "", 0, 0)
+	reply.ParentID = "b-root"
+	if err := store.SaveAnnotationsBatch([]models.Annotation{root, reply}); err != nil {
+		t.Fatalf("SaveAnnotationsBatch: %v", err)
+	}
+	list, err := store.ListAnnotations(doc.ID)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("应写入 2 条: %+v (%v)", list, err)
+	}
+	if err := store.SaveAnnotationsBatch(nil); err != nil {
+		t.Fatalf("空批量应为 no-op: %v", err)
+	}
+}
+
+// 批量写入必须原子：中途失败整体回滚（用 NaN 区域坐标触发序列化错误注入）。
+func TestSaveAnnotationsBatchAtomic(t *testing.T) {
+	store := newTestStore(t)
+	doc, _ := store.UpsertDocument(`C:\docs\atomic.md`, []byte("正文"))
+
+	ok := mkAnnotation(doc.ID, "a-ok", "好的", 0, 2)
+	bad := mkAnnotation(doc.ID, "a-bad", "坏的", 2, 4)
+	bad.Anchor.Region = &models.RegionRect{X: math.NaN()}
+
+	if err := store.SaveAnnotationsBatch([]models.Annotation{ok, bad}); err == nil {
+		t.Fatal("NaN 区域坐标应导致批量保存失败")
+	}
+	list, err := store.ListAnnotations(doc.ID)
+	if err != nil || len(list) != 0 {
+		t.Fatalf("中途失败应整体回滚, 留下 %d 条: %+v (%v)", len(list), list, err)
 	}
 }
 
