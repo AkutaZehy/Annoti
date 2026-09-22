@@ -74,7 +74,7 @@ export function buildThreads(list: Annotation[]): ThreadIndex {
   return { threads, byId, childrenOf, orphanIds };
 }
 
-/** id 及其全部后代（删除时级联清理本地列表用；DB 侧由外键级联） */
+/** id 及其全部后代（删除时级联清理本地列表用；DB 侧由 DeleteAnnotation 递归级联） */
 export function descendantIds(list: Annotation[], id: string): Set<string> {
   const doomed = new Set<string>([id]);
   let grew = true;

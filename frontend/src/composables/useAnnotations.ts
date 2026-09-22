@@ -93,7 +93,7 @@ async function createReply(parentId: string, body: string): Promise<Annotation> 
   }
 
   async function remove(id: string) {
-    // 本地一次性清掉整棵子树（DB 侧由 parent_id 外键级联删除）
+    // 本地一次性清掉整棵子树（DB 侧由 DeleteAnnotation 递归级联删除）
     const doomed = descendantIds(annotations.value, id);
     annotations.value = annotations.value.filter((a) => !doomed.has(a.id));
     if (activeId.value && doomed.has(activeId.value)) activeId.value = null;

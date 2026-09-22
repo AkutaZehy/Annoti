@@ -42,7 +42,10 @@ func OpenAt(dir string) (*Store, error) {
 		return nil, fmt.Errorf("无法创建数据目录: %w", err)
 	}
 
-	// busy_timeout: 多语句快速连发时避免 SQLITE_BUSY
+	// busy_timeout: 多语句快速连发时避免 SQLITE_BUSY。
+	// 刻意不开 foreign_keys pragma：孤儿回复以悬空 parent_id 落库是既有
+	// 导入契约（pack.MergeImport"标记不删"，UI 标"回复丢失"），外键强制
+	// 会拒绝这类插入。删除级联由 DeleteAnnotation 的递归语句保证。
 	db, err := sql.Open("sqlite", filepath.Join(dir, "annoti.db")+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
 	if err != nil {
 		return nil, err
@@ -61,6 +64,9 @@ func (s *Store) Close() error { return s.db.Close() }
 func (s *Store) Dir() string { return s.dir }
 
 func (s *Store) migrate() error {
+	// 表上的 REFERENCES/ON DELETE CASCADE 依赖连接级 foreign_keys pragma，
+	// 本包刻意不开（孤儿回复需要悬空 parent_id，见 OpenAt），
+	// 子树删除级联由 DeleteAnnotation 的递归语句保证。
 	if _, err := s.db.Exec(`
 CREATE TABLE IF NOT EXISTS documents (
 	id          TEXT PRIMARY KEY,
@@ -246,11 +252,20 @@ func (s *Store) SaveAnnotation(a *models.Annotation) error {
 	return err
 }
 
-// DeleteAnnotation 删除批注（子批注由外键级联清除）。
+// DeleteAnnotation 删除批注及其全部后代（整棵子树级联）。
+// 级联由递归语句完成：外键 pragma 刻意未开（见 OpenAt），
+// schema 里的 ON DELETE CASCADE 不生效，残留的子回复会成为
+// 父链悬空的"回复丢失"幽灵。
 func (s *Store) DeleteAnnotation(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.db.Exec(`DELETE FROM annotations WHERE id = ?`, id)
+	_, err := s.db.Exec(`
+WITH RECURSIVE doomed(id) AS (
+	SELECT ?
+	UNION
+	SELECT a.id FROM annotations a JOIN doomed d ON a.parent_id = d.id
+)
+DELETE FROM annotations WHERE id IN (SELECT id FROM doomed)`, id)
 	return err
 }
 
