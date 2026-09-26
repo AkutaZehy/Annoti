@@ -1,3 +1,8 @@
+> **历史文档（存档）**：本文描述的是 2026-09 重写前的旧版实现。其中高亮/锚定算法
+> （surroundContents 包 DOM、containerPath 定位）已在现行版本中**整体废弃**，
+> 现行为文本流偏移锚点 + CSS Custom Highlight API（不修改文档 DOM）。
+> 现行架构见 [../v1-architecture.md](../v1-architecture.md) 与 [../v2-architecture.md](../v2-architecture.md)。
+
 # Annoti 核心算法文档
 
 本文档记录 Annoti 项目中值得学习的核心算法，包括思维链分析和具体代码实现。

@@ -8,7 +8,7 @@
 
 ## 1. 项目背景
 
-Annoti 原为 Tauri 2 + Vue 3 实现（见 `doc/project.md`，历史文档）。
+Annoti 原为 Tauri 2 + Vue 3 实现（见 [`doc/archive/project.md`](archive/project.md)，历史文档）。
 因 Rust 工具链心智负担、调试负担与构建产物问题，V1 起改用 **Wails v2 + Go**。
 
 V1 定位（对应 V1-V3 三阶段规划的第一阶段）：

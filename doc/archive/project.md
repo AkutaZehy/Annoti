@@ -1,3 +1,7 @@
+> **历史文档（存档）**：本文描述的是 2026-09 重写前的 Tauri 2 + Rust 版本，
+> 技术栈、目录与版本信息均与当前 Wails v2 + Go 版本**不一致**。
+> 现行架构见 [../v1-architecture.md](../v1-architecture.md) 与 [../v2-architecture.md](../v2-architecture.md)。
+
 # Annoti 项目架构文档
 
 本文档介绍 Annoti 项目的整体架构、技术栈和组织方式。
