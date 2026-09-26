@@ -20,6 +20,7 @@ import { regionMode } from "@/composables/useViewTools";
 import { useSettings } from "@/composables/useSettings";
 import { useEpubRender } from "@/composables/useEpubRender";
 import { useOutline } from "@/composables/useOutline";
+import { useNoteCards } from "@/composables/useNoteCards";
 import type { DocMode } from "@/types";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useDocument } from "@/composables/useDocument";
@@ -116,6 +117,16 @@ const isLarge = computed(
 /** 讨论串索引（侧栏与便签共用；childrenOf 供便签显示直接子回复） */
 const threadIndex = computed(() => buildThreads(annotations.value));
 
+// ---- 便签层：真正的便签语义（显式关闭；Map 插入顺序即层叠顺序） ----
+// 需先于区域绘制初始化：useRegionDraw 的建框回调引用 openNote。
+
+const { openNotes, noteCards, openNote, bringToFront, closeNote, closeDeleted } = useNoteCards({
+  annotations,
+  childrenOf: computed(() => threadIndex.value.childrenOf),
+  activeId,
+  setActive,
+});
+
 // ---- 渲染与重建 ----
 
 watch(
@@ -128,10 +139,7 @@ watch(
 
 // 批注列表变化：重画高亮，并收起已被删除批注的便签
 watch(annotations, (list) => {
-  const ids = new Set(list.map((a) => a.id));
-  for (const id of [...openNotes.value.keys()]) {
-    if (!ids.has(id)) openNotes.value.delete(id);
-  }
+  closeDeleted(new Set(list.map((a) => a.id)));
   repaint();
 }, { deep: true });
 // activeId 变化只重画高亮；批注卡片由"点击高亮"和"侧栏定位"两条路径显式打开，
@@ -311,56 +319,7 @@ async function onToolbarAction(withNote: boolean, color?: string) {
   openNote(saved.id, rect ?? fallback, withNote);
 }
 
-// ---- 便签层：真正的便签语义 ----
-// 每条批注可同时摊开一张便签；点空白处不会关闭任何便签，
-// 只有显式点 ×（或删除批注）才收走。Map 的插入顺序即层叠顺序（末位在最上）。
-
-const openNotes = ref(new Map<string, { rect: DOMRect; editing: boolean }>());
-
-const noteCards = computed(() =>
-  [...openNotes.value.entries()].flatMap(([id, meta], idx) => {
-    const annotation = annotations.value.find((a) => a.id === id);
-    if (!annotation) return [];
-    const parent = annotation.parentId
-      ? annotations.value.find((a) => a.id === annotation.parentId)
-      : undefined;
-    return [
-      {
-        annotation,
-        meta,
-        idx,
-        replies: threadIndex.value.childrenOf.get(id) ?? [],
-        parentAuthor: parent?.authorName,
-        parentQuote: parent?.quote,
-      },
-    ];
-  }),
-);
-
-function openNote(id: string, rect: DOMRect, editing = false) {
-  if (openNotes.value.has(id)) {
-    bringToFront(id);
-    return;
-  }
-  openNotes.value.set(id, { rect, editing });
-  setActive(id);
-}
-
-function bringToFront(id: string) {
-  const entry = openNotes.value.get(id);
-  if (!entry) return;
-  openNotes.value.delete(id);
-  openNotes.value.set(id, entry); // 重新插入 → 末位 → 最上层
-  setActive(id);
-}
-
-function closeNote(id: string) {
-  openNotes.value.delete(id);
-  if (activeId.value === id) {
-    const keys = [...openNotes.value.keys()];
-    setActive(keys.length ? keys[keys.length - 1] : null);
-  }
-}
+// ---- 便签动作（打开/层叠/关闭的状态机在 useNoteCards） ----
 
 async function onNoteSave(id: string, body: string) {
   await update(id, { body });
@@ -660,8 +619,8 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
       v-for="card in noteCards"
       :key="card.annotation.id"
       :annotation="card.annotation"
-      :rect="card.meta.rect"
-      :editing="card.meta.editing"
+      :rect="card.rect"
+      :editing="card.editing"
       :replies="card.replies"
       :parent-author="card.parentAuthor"
       :parent-quote="card.parentQuote"
