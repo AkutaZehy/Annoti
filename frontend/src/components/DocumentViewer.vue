@@ -15,10 +15,10 @@ import {
   regionTargetAvailable,
 } from "@/core/regions";
 import { renderDocument, type RenderedDoc } from "@/formats";
-import { renderEpub } from "@/formats/epub";
 import { inWailsShell, getPlatform } from "@/platform";
 import { regionMode } from "@/composables/useViewTools";
 import { useSettings } from "@/composables/useSettings";
+import { useEpubRender } from "@/composables/useEpubRender";
 import type { DocMode, OutlineItem } from "@/types";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useDocument } from "@/composables/useDocument";
@@ -47,11 +47,15 @@ const resolved = new Map<string, { start: number; end: number }>();
 
 // ---- EPUB 异步渲染（文本格式走同步 renderDocument） ----
 
-const epubHtml = ref("");
-const epubWarning = ref("");
-const epubToc = ref<OutlineItem[]>([]);
-const epubLoading = ref(false);
-let epubSeq = 0;
+const {
+  html: epubHtml,
+  warning: epubWarning,
+  toc: epubToc,
+  loading: epubLoading,
+} = useEpubRender(() => ({
+  mode: props.mode,
+  libraryPath: currentDoc.value?.libraryPath,
+}));
 
 const renderResult = computed<RenderedDoc>(() => {
   if (props.mode === "epub") {
@@ -66,40 +70,6 @@ const renderResult = computed<RenderedDoc>(() => {
     localres: inWailsShell(),
   });
 });
-
-watch(
-  () => [props.mode, currentDoc.value?.libraryPath] as const,
-  async () => {
-    if (props.mode !== "epub") {
-      epubHtml.value = "";
-      epubWarning.value = "";
-      epubToc.value = [];
-      return;
-    }
-    const lib = currentDoc.value?.libraryPath;
-    const seq = ++epubSeq;
-    if (!lib || !inWailsShell()) {
-      epubHtml.value = "";
-      epubWarning.value = "EPUB 需要在 Annoti 桌面版中打开";
-      return;
-    }
-    epubLoading.value = true;
-    try {
-      const result = await renderEpub({ libraryPath: lib, localres: true });
-      if (seq !== epubSeq) return; // 已切换到别的文档
-      epubHtml.value = result.html;
-      epubWarning.value = result.warning ?? "";
-      epubToc.value = result.toc ?? [];
-    } catch (e) {
-      if (seq !== epubSeq) return;
-      epubHtml.value = "";
-      epubWarning.value = "EPUB 载入失败: " + (e instanceof Error ? e.message : String(e));
-    } finally {
-      if (seq === epubSeq) epubLoading.value = false;
-    }
-  },
-  { immediate: true },
-);
 
 /** 等宽照排视图（pre + 横向滚动）的文档类型 */
 const SOURCE_MODES: readonly DocMode[] = ["json", "xml", "kv", "markup", "diff", "log", "jsonl"];
