@@ -6,7 +6,7 @@
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { buildTextIndex, offsetsToRange, type TextIndex } from "@/core/textIndex";
-import { makeAnchor, resolveAnchor } from "@/core/anchor";
+import { resolveAnchor } from "@/core/anchor";
 import { descendantIds, buildThreads } from "@/core/threads";
 import { HighlightPainter } from "@/core/highlight";
 import {
@@ -21,7 +21,8 @@ import { useSettings } from "@/composables/useSettings";
 import { useEpubRender } from "@/composables/useEpubRender";
 import { useOutline } from "@/composables/useOutline";
 import { useNoteCards } from "@/composables/useNoteCards";
-import type { DocMode } from "@/types";
+import { useSelectionToolbar } from "@/composables/useSelectionToolbar";
+import type { DocMode, TextAnchor } from "@/types";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useDocument } from "@/composables/useDocument";
 import { useFind } from "@/composables/useFind";
@@ -232,40 +233,17 @@ const { outline, rebuild: rebuildOutline, locate: locateOutline } = useOutline({
   toc: () => renderResult.value.toc ?? [],
 });
 
-// ---- 选区 → 工具条 ----
-// 监听 selectionchange（去抖），统一覆盖拖选/双击选词/键盘选区，
-// 不依赖 mouseup 时机，也不依赖渲染帧（窗口被遮挡时 rAF 不会触发）。
+// ---- 选区 → 工具条（选区监听/去抖/收条状态机在 useSelectionToolbar） ----
 
-const toolbar = ref<{ x: number; y: number } | null>(null);
-let pendingRange: Range | null = null;
-let selTimer: ReturnType<typeof setTimeout> | null = null;
-
-function onSelectionChange() {
-  if (selTimer) clearTimeout(selTimer);
-  selTimer = setTimeout(() => {
-    selTimer = null;
-    if (regionMode.value) return;
-    const sel = window.getSelection();
-    // 选区塌缩（点击别处/Esc 清除）→ 工具条失去存在意义，立即收回
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-      if (toolbar.value) dismissToolbar();
-      return;
-    }
-    if (!index) return;
-    const range = sel.getRangeAt(0);
-    if (!containerRef.value?.contains(range.commonAncestorContainer)) {
-      if (toolbar.value) dismissToolbar();
-      return;
-    }
-    pendingRange = range.cloneRange();
-    const rect = lastRectOf(range);
-    if (rect) toolbar.value = { x: rect.right, y: rect.top };
-  }, 150);
-}
+const { toolbar, dismiss: dismissToolbar, confirmSelection } = useSelectionToolbar({
+  getIndex: () => index,
+  getContainer: () => containerRef.value,
+  getScroller: scrollerEl,
+  isBlocked: () => regionMode.value,
+  onAction: (sel, withNote, color) => void onToolbarSelection(sel, withNote, color),
+});
 
 onMounted(() => {
-  document.addEventListener("selectionchange", onSelectionChange);
-  scrollerEl()?.addEventListener("scroll", onScrollDismiss, { passive: true });
   if (containerRef.value && typeof ResizeObserver !== "undefined") {
     const obs = new ResizeObserver(() => syncRegionBoxes());
     obs.observe(containerRef.value);
@@ -273,50 +251,26 @@ onMounted(() => {
   }
 });
 onBeforeUnmount(() => {
-  document.removeEventListener("selectionchange", onSelectionChange);
-  scrollerEl()?.removeEventListener("scroll", onScrollDismiss);
-  if (selTimer) clearTimeout(selTimer);
   resizeObs?.disconnect();
   painter.destroy();
 });
-
-/** 滚动时工具条位置失效：立即收回（便签是显式语义，保留不动） */
-function onScrollDismiss() {
-  if (toolbar.value) dismissToolbar();
-}
 
 function scrollerEl(): HTMLElement | null {
   return containerRef.value?.closest(".viewer-scroll") as HTMLElement | null;
 }
 let resizeObs: ResizeObserver | null = null;
 
-function lastRectOf(range: Range): DOMRect | null {
-  const rects = range.getClientRects();
-  return rects.length ? (rects[rects.length - 1] as DOMRect) : null;
-}
-
-function dismissToolbar() {
-  toolbar.value = null;
-  pendingRange = null;
-}
-
-async function onToolbarAction(withNote: boolean, color?: string) {
-  if (!index || !pendingRange) return;
-  const anchor = makeAnchor(index, pendingRange);
-  // 关键：此时重新测量选区的当前位置——划线后滚动过文档的话，
-  // 旧 rect 已失效（视口坐标），便签会开到看不见的地方
-  const rect = lastRectOf(pendingRange);
-  const quote = pendingRange.toString();
-  window.getSelection()?.removeAllRanges();
-  dismissToolbar();
-  if (!anchor) return;
-
-  const saved = await create(anchor, quote, "", color);
+async function onToolbarSelection(
+  sel: { anchor: TextAnchor; quote: string; rect: DOMRect | null },
+  withNote: boolean,
+  color?: string,
+) {
+  const saved = await create(sel.anchor, sel.quote, "", color);
   setActive(saved.id);
-  const pos = resolveAnchor(index!, saved.anchor);
+  const pos = index ? resolveAnchor(index, saved.anchor) : null;
   if (pos) resolved.set(saved.id, pos);
   const fallback = scrollerEl()?.getBoundingClientRect() ?? new DOMRect(80, 80, 0, 0);
-  openNote(saved.id, rect ?? fallback, withNote);
+  openNote(saved.id, sel.rect ?? fallback, withNote);
 }
 
 // ---- 便签动作（打开/层叠/关闭的状态机在 useNoteCards） ----
@@ -610,8 +564,8 @@ defineExpose({ locate, locateOutline, outline, openFind, closeFind, zoom, zoomRe
       v-if="toolbar"
       :x="toolbar.x"
       :y="toolbar.y"
-      @highlight="(c?: string) => onToolbarAction(false, c)"
-      @note="onToolbarAction(true)"
+      @highlight="(c?: string) => confirmSelection(false, c)"
+      @note="confirmSelection(true)"
       @dismiss="dismissToolbar"
     />
 
