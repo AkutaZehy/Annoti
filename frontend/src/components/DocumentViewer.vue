@@ -19,7 +19,8 @@ import { inWailsShell, getPlatform } from "@/platform";
 import { regionMode } from "@/composables/useViewTools";
 import { useSettings } from "@/composables/useSettings";
 import { useEpubRender } from "@/composables/useEpubRender";
-import type { DocMode, OutlineItem } from "@/types";
+import { useOutline } from "@/composables/useOutline";
+import type { DocMode } from "@/types";
 import { useAnnotations } from "@/composables/useAnnotations";
 import { useDocument } from "@/composables/useDocument";
 import { useFind } from "@/composables/useFind";
@@ -217,41 +218,11 @@ const { findState, openFind, closeFind, onFindQuery, runFind, findStep } = useFi
 
 // ---- 大纲（md/html 标题树；epub 章节） ----
 
-const outline = ref<OutlineItem[]>([]);
-
-function rebuildOutline() {
-  const el = containerRef.value;
-  if (!el) {
-    outline.value = [];
-    return;
-  }
-  if (props.mode === "epub") {
-    outline.value = renderResult.value.toc ?? [];
-    return;
-  }
-  // 照排/纯文本/表格类文档没有标题大纲
-  if (!["md", "html", "epub"].includes(props.mode)) {
-    outline.value = [];
-    return;
-  }
-  const items: OutlineItem[] = [];
-  let i = 0;
-  for (const h of Array.from(el.querySelectorAll("h1, h2, h3"))) {
-    const label = (h.textContent ?? "").trim().slice(0, 80);
-    if (!label) continue;
-    h.setAttribute("data-outline", String(i));
-    items.push({ level: Number(h.tagName[1]), label, key: String(i) });
-    i++;
-  }
-  outline.value = items;
-}
-
-function locateOutline(item: OutlineItem) {
-  const el = props.mode === "epub"
-    ? containerRef.value?.querySelectorAll("section.epub-chapter")[Number(item.key)]
-    : containerRef.value?.querySelector(`[data-outline="${CSS.escape(item.key)}"]`);
-  if (el) (el as HTMLElement).scrollIntoView({ block: "center" });
-}
+const { outline, rebuild: rebuildOutline, locate: locateOutline } = useOutline({
+  getContainer: () => containerRef.value,
+  mode: () => props.mode,
+  toc: () => renderResult.value.toc ?? [],
+});
 
 // ---- 选区 → 工具条 ----
 // 监听 selectionchange（去抖），统一覆盖拖选/双击选词/键盘选区，
