@@ -198,6 +198,27 @@ const SHORTCUTS: [string, string][] = [
         />
         <div v-else class="welcome">
           <div class="welcome-card">
+            <!-- 风格派品牌面点缀：粗线分格、只横竖、红黄蓝平涂、大片留白、不对称平衡；
+                 网格线取主题墨色（非纯黑），让构图长在稿纸上。色值来源：设计风格小课·风格派（作者自选 hex）。 -->
+            <svg
+              class="de-stijl-plate"
+              viewBox="0 0 440 280"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <rect class="ds-anim ds-x ds-red" x="0" y="0" width="170" height="88" />
+              <rect class="ds-anim ds-x ds-yellow" x="380" y="0" width="60" height="88" />
+              <rect class="ds-anim ds-y ds-blue" x="300" y="88" width="140" height="192" />
+              <rect class="ds-anim ds-x ds-line" x="0" y="85" width="440" height="6" />
+              <rect class="ds-anim ds-x ds-line" x="0" y="177" width="300" height="6" />
+              <rect class="ds-anim ds-y ds-line" x="167" y="0" width="6" height="91" />
+              <rect class="ds-anim ds-y ds-line" x="297" y="85" width="6" height="195" />
+              <rect class="ds-anim ds-y ds-line" x="377" y="0" width="6" height="91" />
+              <rect class="ds-anim ds-x ds-line" x="0" y="0" width="440" height="6" />
+              <rect class="ds-anim ds-x ds-line" x="0" y="274" width="440" height="6" />
+              <rect class="ds-anim ds-y ds-line" x="0" y="0" width="6" height="280" />
+              <rect class="ds-anim ds-y ds-line" x="434" y="0" width="6" height="280" />
+            </svg>
             <h1>Read &amp; Note</h1>
             <p>打开 Markdown、纯文本、HTML、JSON、XML、CSV 或 EPUB 文档，像在稿纸上一样划线、框选、批注、讨论。</p>
             <button class="open-btn" @click="openFile">
@@ -264,9 +285,13 @@ const SHORTCUTS: [string, string][] = [
          不用 Transition：快速连续拖入时 enter/leave 互撞会让 transitionend
          永不触发、遮罩卡死在 DOM（实测踩坑）；即时显隐才符合拖拽反馈语义。 -->
     <div v-if="dragDepth > 0" class="drop-overlay">
+      <div class="drop-frame" aria-hidden="true">
+        <i class="frame-tab frame-tab-red"></i>
+        <i class="frame-tab frame-tab-blue"></i>
+      </div>
       <div class="drop-card">
-        <Icon name="folder-open" :size="30" />
         <p>松开以打开文档</p>
+        <i class="drop-mark" aria-hidden="true"></i>
         <small>支持 Markdown / 文本 / HTML / JSON / XML / CSV / EPUB</small>
       </div>
     </div>
@@ -400,6 +425,88 @@ const SHORTCUTS: [string, string][] = [
   font-size: 2rem;
 }
 
+/* 风格派构图：色块平涂，网格线取主题墨色；入场动效只走横竖（刷满），无弹跳。 */
+.de-stijl-plate {
+  display: block;
+  width: min(340px, 100%);
+  margin: 0 auto 30px;
+}
+
+.ds-red {
+  fill: #d0302a;
+}
+
+.ds-yellow {
+  fill: #ebc226;
+}
+
+.ds-blue {
+  fill: #1d3f8c;
+}
+
+.ds-line {
+  fill: var(--text-primary, #37352f);
+}
+
+.dark-theme .ds-blue {
+  fill: #2c4fae; /* 暗底上原蓝 #1d3f8c 过闷，微提亮，色相不变 */
+}
+
+.ds-anim {
+  transform-box: fill-box;
+  animation: 0.42s cubic-bezier(0.25, 0, 0.3, 1) both;
+}
+
+.ds-x {
+  transform-origin: left center;
+  animation-name: ds-brush-x;
+}
+
+.ds-y {
+  transform-origin: center top;
+  animation-name: ds-brush-y;
+}
+
+.ds-line {
+  animation-duration: 0.26s;
+}
+
+.ds-red {
+  animation-delay: 0.2s;
+}
+
+.ds-yellow {
+  animation-delay: 0.34s;
+}
+
+.ds-blue {
+  animation-delay: 0.46s;
+}
+
+@keyframes ds-brush-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ds-brush-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-anim {
+    animation: none;
+  }
+}
+
 .open-btn {
   display: inline-flex;
   align-items: center;
@@ -435,7 +542,8 @@ const SHORTCUTS: [string, string][] = [
   color: var(--text-secondary, #6f6a5e);
 }
 
-/* 拖拽悬停全屏遮罩 */
+/* 拖拽悬停全屏遮罩：风格派平涂——不透明底、粗实线框、无圆角无阴影，
+   强反馈靠平涂与粗框而非柔影；显隐仍即时（见上方模板注释的踩坑记录）。 */
 .drop-overlay {
   position: fixed;
   inset: 0;
@@ -443,33 +551,60 @@ const SHORTCUTS: [string, string][] = [
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(250, 249, 245, 0.82);
-  backdrop-filter: blur(2px);
+  background: var(--bg-primary, #faf9f5);
   pointer-events: none; /* 不拦截 drop，事件穿透到平台层 */
 }
 
-.dark-theme .drop-overlay {
-  background: rgba(38, 36, 30, 0.85);
+/* 内缩粗框：横竖直角；两个原色块骑在框线上，位置不对称。 */
+.drop-frame {
+  position: absolute;
+  inset: 14px;
+  border: 3px solid var(--text-primary, #37352f);
+}
+
+.frame-tab {
+  position: absolute;
+  width: 48px;
+  height: 12px;
+}
+
+.frame-tab-red {
+  top: -7px;
+  left: 12%;
+  background: #d0302a;
+}
+
+.frame-tab-blue {
+  bottom: -7px;
+  right: 12%;
+  background: #1d3f8c;
+}
+
+.dark-theme .frame-tab-blue {
+  background: #2c4fae; /* 同 .ds-blue：暗底微提亮 */
 }
 
 .drop-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 36px 56px;
-  border: 2px dashed var(--accent, #b45309);
-  border-radius: 18px;
+  gap: 12px;
+  padding: 34px 54px;
+  border: 3px solid var(--text-primary, #37352f);
   background: var(--bg-primary, #faf9f5);
-  color: var(--accent, #b45309);
-  box-shadow: 0 18px 60px rgba(55, 53, 47, 0.18);
 }
 
 .drop-card p {
-  margin: 4px 0 0;
-  font-size: 16px;
+  margin: 0;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary, #37352f);
+}
+
+.drop-mark {
+  width: 64px;
+  height: 12px;
+  background: #ebc226;
 }
 
 .drop-card small {
